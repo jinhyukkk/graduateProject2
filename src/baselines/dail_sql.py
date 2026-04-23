@@ -354,12 +354,20 @@ class DAILSQLBaseline(BaselineModel):
     # ------------------------------------------------------------------ #
 
     def _get_embedding(self, texts: list[str]) -> np.ndarray:
-        """OpenAI 임베딩 API로 텍스트 리스트를 임베딩한다."""
-        response = self.client.embeddings.create(
-            model=self.embedding_model,
-            input=texts,
-        )
-        return np.array([item.embedding for item in response.data], dtype=np.float32)
+        """OpenAI 임베딩 API로 텍스트 리스트를 임베딩한다.
+
+        OpenAI Embeddings API는 요청당 최대 2048개 입력 제한이 있어 배치 처리.
+        """
+        batch_size = 2048
+        all_embeddings = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            response = self.client.embeddings.create(
+                model=self.embedding_model,
+                input=batch,
+            )
+            all_embeddings.extend(item.embedding for item in response.data)
+        return np.array(all_embeddings, dtype=np.float32)
 
     def _compute_pool_embeddings(self):
         """Few-shot 풀의 masked question 임베딩을 미리 계산한다 (1회만)."""
@@ -475,6 +483,7 @@ class DAILSQLBaseline(BaselineModel):
         schema: dict,
         db_path: str,
         query_id: int | None = None,
+        evidence: str = "",
     ) -> dict:
         """
         DAIL-SQL 방식으로 SQL을 생성한다.
@@ -500,7 +509,7 @@ class DAILSQLBaseline(BaselineModel):
             )
 
             # Step 2: Code Representation + DAIL Organization 프롬프트
-            prompt = self._build_prompt(question, schema_text, selected_examples)
+            prompt = self._build_prompt(question, schema_text, selected_examples, evidence)
             messages = [{"role": "user", "content": prompt}]
 
             # Step 3: SQL 생성
@@ -540,31 +549,26 @@ class DAILSQLBaseline(BaselineModel):
         question: str,
         schema_text: str,
         examples: list[dict],
+        evidence: str = "",
     ) -> str:
         """
         DAIL-SQL 논문의 Code Representation + DAIL Organization 프롬프트.
-
-        형식 (논문 원안):
-          /* Given the following database schema: */
-          {schema DDL}
-          /* Answer the following: {example_q1} */
-          {example_sql1}
-          ...
-          /* Answer the following: {target_q} */
-          SELECT
+        evidence가 제공되면 schema 다음에 hint 블록으로 삽입.
         """
         parts = []
         parts.append("/* Given the following database schema: */")
         parts.append(schema_text)
         parts.append("")
 
-        # DAIL Organization: 예시에 schema를 포함하지 않음 (토큰 효율)
+        if evidence and evidence.strip():
+            parts.append(f"/* External knowledge / hint: {evidence.strip()} */")
+            parts.append("")
+
         for ex in examples:
             parts.append(f"/* Answer the following: {ex['query']} */")
             parts.append(ex["sql"])
             parts.append("")
 
-        # Target question + SELECT 프라이밍
         parts.append(f"/* Answer the following: {question} */")
         parts.append("SELECT ")
 

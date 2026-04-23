@@ -22,7 +22,7 @@ nli:
 
 evaluation:
   datasets: ["hrdb", "bird"]
-  bird_dev_path: "data/raw/bird/dev.json"
+  bird_dev_path: "data/raw/bird/dev_300.json"
   hrdb_dev_path: "data/raw/hrdb/dev.json"
   hrdb_db_path: "data/raw/hrdb/hrdb.sqlite"
   hrdb_metadata_path: "data/raw/hrdb/metadata.json"

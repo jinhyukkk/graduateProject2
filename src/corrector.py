@@ -7,6 +7,7 @@ import os
 from openai import OpenAI
 from src.execution_validator import ValidationResult
 from src.semantic_verifier import VerificationResult
+from src.openai_retry import chat_completion
 
 
 # RQ2: 오류 유형별 전용 교정 지시문.
@@ -107,6 +108,9 @@ class Corrector:
         sql: str,
         validation_result: ValidationResult,
         verification_result: VerificationResult | None,
+        schema_context: dict | None = None,
+        correction_history: list[dict] | None = None,
+        evidence: str = "",
     ) -> str:
         """
         Section 4.4.3: 오류 정보를 기반으로 SQL을 교정한다.
@@ -116,6 +120,12 @@ class Corrector:
             sql: 교정 대상 SQL
             validation_result: ExecutionValidator.validate() 결과
             verification_result: SemanticVerifier.verify() 결과 (없을 수 있음)
+            schema_context: SchemaLinker.link() 결과 — 스키마 텍스트 포함 시
+                            E3_NO_SUCH_COLUMN 교정 품질이 대폭 향상된다.
+            correction_history: 이번 질의에서 이전 교정 라운드 기록.
+                각 항목: {"round": int, "error_type": str, "original_sql": str,
+                          "corrected_sql": str, "semantic_score": float}
+                이전 시도와 동일한 실수를 반복하지 않도록 프롬프트에 포함한다.
 
         Returns:
             교정된 SQL 문자열
@@ -129,15 +139,30 @@ class Corrector:
         routed_error_type = self._route_error_type(validation_result, verification_result)
         guidance = self._select_guidance(routed_error_type)
 
+        # 스키마 블록: schema_context가 있으면 프롬프트에 포함 (E3/E2 교정 품질 향상)
+        schema_block = ""
+        if schema_context:
+            schema_text = schema_context.get("schema_text", "")
+            if schema_text:
+                schema_block = f"\n## Database Schema\n{schema_text}\n"
+
+        # 이전 교정 이력 블록: 반복 실수 방지
+        history_block = self._format_correction_history(correction_history or [])
+
+        # Evidence(외부 도메인 지식) 블록 — BIRD 등에서만 제공
+        evidence_block = ""
+        if evidence and evidence.strip():
+            evidence_block = f"\n## External Knowledge / Hint\n{evidence.strip()}\n"
+
         # Section 4.4.3 + RQ2: 오류 유형별 지시문이 포함된 Corrector 프롬프트
         prompt = f"""You are an expert SQL debugger. Fix the following SQL query based on the error information provided.
-
+{schema_block}{evidence_block}
 원래 질의: {query}
 생성된 SQL: {sql}
 실행 결과: {execution_info}
 감지된 오류: {error_info}
 의미 일관성 진단: {semantic_info}
-
+{history_block}
 [교정 지시 — 오류 유형: {routed_error_type}]
 {guidance}
 
@@ -145,7 +170,8 @@ class Corrector:
 
 Return the corrected SQL query wrapped in ```sql``` code blocks, followed by a brief explanation."""
 
-        response = self.client.chat.completions.create(
+        response = chat_completion(
+            self.client,
             model=self.llm_model,
             temperature=self.config["llm"]["temperature"],
             max_completion_tokens=self.config["llm"]["max_tokens"],
@@ -231,6 +257,34 @@ Return the corrected SQL query wrapped in ```sql``` code blocks, followed by a b
         if verification_result.mismatch_diagnosis:
             parts.append(f"진단: {verification_result.mismatch_diagnosis}")
         return "\n".join(parts)
+
+    def _format_correction_history(self, history: list[dict]) -> str:
+        """
+        이전 교정 라운드 기록을 프롬프트 블록으로 변환한다.
+
+        Fix 3 (Phase 1 분석 반영):
+          - 직전 1라운드만 노출 (이전 시도 전부 보여주면 LLM이 가까운 정답도 회피)
+          - "완전히 다른 접근법" → "동일한 실수 반복 금지"로 문구 순화
+          - 실행 오류 유형(E1~E6)은 이미 어떤 오류인지 알려주므로 상세 재서술 대신 간결 요약
+        """
+        if not history:
+            return ""
+
+        # 직전 라운드만 사용 (너무 많은 이력은 오히려 과도한 제약이 됨)
+        entry = history[-1]
+        round_num = entry.get("round", "?")
+        error_type = entry.get("error_type", "UNKNOWN")
+        prev_sql = entry.get("original_sql", "")
+        score = entry.get("semantic_score", None)
+        score_str = f", semantic_score={score:.3f}" if score is not None else ""
+
+        lines = [
+            "\n## 이전 시도 (참고용)",
+            f"직전 라운드 {round_num}에서 시도한 SQL은 '{error_type}' 문제를 보였습니다{score_str}:",
+            f"```sql\n{prev_sql}\n```",
+            "이 SQL의 **동일한 실수를 반복하지 마세요**. 단, 올바른 부분은 유지해도 됩니다.",
+        ]
+        return "\n".join(lines) + "\n"
 
     def _format_execution_result(self, validation_result: ValidationResult) -> str:
         """실행 결과를 포맷한다."""

@@ -6,6 +6,8 @@ Result Explainer (Section 4.5)
 import os
 from openai import OpenAI
 
+from src.openai_retry import chat_completion
+
 
 class ResultExplainer:
     """
@@ -64,7 +66,8 @@ class ResultExplainer:
 
 ## 설명"""
 
-        response = self.client.chat.completions.create(
+        response = chat_completion(
+            self.client,
             model=self.llm_model,
             temperature=0.3,  # 약간의 자연스러움을 위해 0.3
             max_completion_tokens=512,

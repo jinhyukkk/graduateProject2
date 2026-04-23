@@ -26,7 +26,7 @@ class ZeroShotBaseline(BaselineModel):
       - llm.model, llm.temperature, llm.max_tokens
     """
 
-    def predict(self, question: str, schema: dict, db_path: str) -> dict:
+    def predict(self, question: str, schema: dict, db_path: str, evidence: str = "") -> dict:
         """
         Zero-shot으로 SQL을 생성한다.
 
@@ -34,6 +34,7 @@ class ZeroShotBaseline(BaselineModel):
             question: 자연어 질의
             schema: 스키마 정보 (schema_text 키 필수)
             db_path: SQLite DB 파일 경로 (이 베이스라인에서는 미사용)
+            evidence: 외부 도메인 지식(BIRD evidence). 비어있으면 무시.
 
         Returns:
             표준 결과 딕셔너리
@@ -41,7 +42,7 @@ class ZeroShotBaseline(BaselineModel):
         start_time = time.time()
         schema_text = schema.get("schema_text", "")
 
-        prompt = self._build_prompt(question, schema_text)
+        prompt = self._build_prompt(question, schema_text, evidence)
         messages = [
             {"role": "system", "content": "You are an expert SQL query generator for SQLite databases. Return ONLY the SQL query, no explanations."},
             {"role": "user", "content": prompt},
@@ -73,20 +74,25 @@ class ZeroShotBaseline(BaselineModel):
                 error=str(e),
             )
 
-    def _build_prompt(self, question: str, schema_text: str) -> str:
+    def _build_prompt(self, question: str, schema_text: str, evidence: str = "") -> str:
         """Zero-shot 프롬프트를 구성한다."""
+        evidence_block = (
+            f"\n## External Knowledge / Hint\n{evidence.strip()}\n"
+            if evidence and evidence.strip() else ""
+        )
         return f"""You are an expert SQL query generator. Given a database schema and a natural language question, generate the correct SQLite SQL query.
 
 ## Database Schema
 {schema_text}
-
+{evidence_block}
 ## Guidelines
 1. Use only the tables and columns provided in the schema above.
 2. Use proper JOIN conditions based on foreign key relationships.
 3. Be careful with aggregate functions (COUNT, SUM, AVG, etc.) and GROUP BY clauses.
 4. Use appropriate WHERE clauses for filtering.
 5. Handle NULL values appropriately.
-6. Return ONLY the SQL query, no explanations.
+6. If an "External Knowledge / Hint" section is provided, treat it as authoritative domain knowledge.
+7. Return ONLY the SQL query, no explanations.
 
 ## Question
 {question}

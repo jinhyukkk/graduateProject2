@@ -50,7 +50,7 @@ class MACSQLBaseline(BaselineModel):
         # Selector는 스키마가 클 때만 활성화 (논문 Appendix A.1)
         self.selector_char_threshold = mac_config.get("selector_char_threshold", 6000)
 
-    def predict(self, question: str, schema: dict, db_path: str) -> dict:
+    def predict(self, question: str, schema: dict, db_path: str, evidence: str = "") -> dict:
         """
         MAC-SQL 3에이전트 파이프라인으로 SQL을 생성한다.
         논문 기준 순서: Selector → Decomposer → Refiner
@@ -59,6 +59,7 @@ class MACSQLBaseline(BaselineModel):
             question: 자연어 질의
             schema: 스키마 정보 (schema_text, tables, columns, foreign_keys)
             db_path: SQLite DB 파일 경로
+            evidence: 외부 도메인 지식(BIRD evidence). 비어있으면 무시.
 
         Returns:
             표준 결과 딕셔너리
@@ -83,7 +84,7 @@ class MACSQLBaseline(BaselineModel):
 
             # Agent 2: Decomposer — 축소(또는 전체) 스키마로 질의 분해 + SQL 생성
             sql, decomposition, cost2 = self._decompose_and_generate(
-                question, pruned_schema
+                question, pruned_schema, evidence
             )
             total_prompt_tokens += cost2["prompt_tokens"]
             total_completion_tokens += cost2["completion_tokens"]
@@ -99,7 +100,7 @@ class MACSQLBaseline(BaselineModel):
                     break
 
                 refined_sql, cost_ref = self._refine(
-                    question, sql, feedback, pruned_schema
+                    question, sql, feedback, pruned_schema, evidence
                 )
                 total_prompt_tokens += cost_ref["prompt_tokens"]
                 total_completion_tokens += cost_ref["completion_tokens"]
@@ -183,7 +184,7 @@ class MACSQLBaseline(BaselineModel):
     # ------------------------------------------------------------------ #
 
     def _decompose_and_generate(
-        self, question: str, pruned_schema: str
+        self, question: str, pruned_schema: str, evidence: str = ""
     ) -> tuple[str, str, dict]:
         """
         MAC-SQL Decomposer: 복잡한 질의를 하위 질의로 분해하고,
@@ -201,11 +202,15 @@ class MACSQLBaseline(BaselineModel):
         Returns:
             (최종 SQL, 전체 추론 과정 텍스트, {"prompt_tokens": int, "completion_tokens": int})
         """
+        evidence_block = (
+            f"\n## External Knowledge / Hint\n{evidence.strip()}\n"
+            if evidence and evidence.strip() else ""
+        )
         prompt = f"""You are an expert SQL query generator. Use a divide-and-conquer approach to answer the question.
 
 ## Database Schema (Relevant Tables Only)
 {pruned_schema}
-
+{evidence_block}
 ## Question
 {question}
 
@@ -348,6 +353,7 @@ Final SQL:
         sql: str,
         feedback: dict,
         pruned_schema: str,
+        evidence: str = "",
     ) -> tuple[str, dict]:
         """
         MAC-SQL Refiner: 실행 피드백을 기반으로 SQL을 교정한다.
@@ -366,9 +372,13 @@ Final SQL:
         """
         error_msg = feedback["error"]
         exc_class = feedback["exception_class"]
+        evidence_block = (
+            f"\n[External knowledge / hint]\n{evidence.strip()}\n"
+            if evidence and evidence.strip() else ""
+        )
 
         prompt = f"""[Instruction]
-When executing SQL below, some errors occurred, please fix up SQL based on query and database info. Solve the task step by step if you need to. Using SQL format in the code block, and indicate script type in the code block. When you find an answer, verify the answer carefully.
+When executing SQL below, some errors occurred, please fix up SQL based on query and database info. Solve the task step by step if you need to. Using SQL format in the code block, and indicate script type in the code block. When you find an answer, verify the answer carefully.{evidence_block}
 
 [Constraints]
 - In 'SELECT <column>', just select needed columns in the question without any unnecessary column or value

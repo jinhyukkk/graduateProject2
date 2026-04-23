@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Typography,
   Select,
@@ -15,18 +15,20 @@ import {
   RobotOutlined,
   CodeOutlined,
   DeleteOutlined,
-  HistoryOutlined,
   PlayCircleOutlined,
   BranchesOutlined,
   SyncOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
-import { useDatabases, useRunQuery } from '../hooks/useApi';
+import { useDatabases } from '../hooks/useApi';
+import { streamQuery } from '../hooks/useApi';
 import QueryInput from '../components/query/QueryInput';
 import ResultTable from '../components/query/ResultTable';
 import SqlDisplay from '../components/query/SqlDisplay';
-import CorrectionStepper from '../components/correction/CorrectionStepper';
 import SchemaContextDisplay from '../components/query/SchemaContextDisplay';
-import type { QueryResult } from '../types';
+import PipelineVisualizer from '../components/query/PipelineVisualizer';
+import type { QueryResult, StreamState, PipelineStage } from '../types';
+import { initialStreamState } from '../types';
 
 // ── 예시 질문 ──────────────────────────────────────────────────
 const EXAMPLE_QUESTIONS = [
@@ -41,10 +43,33 @@ const EXAMPLE_QUESTIONS = [
 interface ChatEntry {
   id: string;
   question: string;
-  result: QueryResult | null;
+  stream: StreamState;
   isLoading: boolean;
   error: string | null;
 }
+
+// ── PipelineStage → PipelineVisualizer currentStep 변환 ────────
+function stageToStep(stage: PipelineStage | null): number {
+  switch (stage) {
+    case 'schema_link':  return 1;
+    case 'sql_generating': return 2;
+    case 'validating':   return 3;
+    case 'verifying':    return 4;
+    case 'correcting':   return 3; // 교정 후 검증 재진입
+    case 'explaining':   return 4;
+    default:             return 1;
+  }
+}
+
+// ── 단계 한국어 설명 ────────────────────────────────────────────
+const STAGE_LABEL: Record<string, string> = {
+  schema_link:   '관련 테이블 탐색 중...',
+  sql_generating:'SQL 생성 중...',
+  validating:    '실행 검증 중...',
+  verifying:     '의미 검증(NLI) 중...',
+  correcting:    'SQL 교정 중...',
+  explaining:    '결과 설명 생성 중...',
+};
 
 // ── 공용 스타일 ────────────────────────────────────────────────
 const avatarStyle: React.CSSProperties = {
@@ -83,45 +108,91 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-// ── 로딩 말풍선 (타이핑 인디케이터) ───────────────────────────
-function LoadingBubble() {
+// ── 스트리밍 중 말풍선 (실제 파이프라인 진행 반영) ────────────
+function StreamingBubble({ stream }: { stream: StreamState }) {
+  const step = stageToStep(stream.stage);
+  const stageLabel = stream.stage ? STAGE_LABEL[stream.stage] : '파이프라인 준비 중...';
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-end',
-        gap: 8,
-        marginBottom: 18,
-      }}
-    >
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 18 }}>
       <div style={avatarStyle}>
         <RobotOutlined style={{ fontSize: 14 }} />
       </div>
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: '4px 18px 18px 18px',
-          padding: '14px 18px',
-          border: '1px solid #f0f0f0',
-          display: 'flex',
-          gap: 5,
-          alignItems: 'center',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-        }}
-      >
-        {[0, 1, 2].map((i) => (
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* 파이프라인 단계 (실제 진행 기반) */}
+        <div style={{ width: 260, marginBottom: 10 }}>
+          <PipelineVisualizer currentStep={step} isLoading={true} />
+        </div>
+
+        {/* 현재 단계 텍스트 */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginBottom: 10,
+            color: '#8c8c8c',
+            fontSize: 12,
+          }}
+        >
+          <LoadingOutlined style={{ color: '#1677ff' }} />
+          <span>{stageLabel}</span>
+        </div>
+
+        {/* SQL (생성되는 순간부터 표시) */}
+        {stream.sql && (
+          <div style={{ marginBottom: 10 }}>
+            <SqlDisplay sql={stream.sql} label="생성된 SQL" />
+          </div>
+        )}
+
+        {/* 실행 검증 결과 */}
+        {stream.validation && (
+          <div style={{ marginBottom: 6 }}>
+            <Tag color={stream.validation.success ? 'green' : 'red'} style={{ fontSize: 11 }}>
+              실행 검증 {stream.validation.success ? '통과' : `실패: ${stream.validation.error_type}`}
+            </Tag>
+          </div>
+        )}
+
+        {/* 의미 검증 결과 */}
+        {stream.verification && (
+          <div style={{ marginBottom: 6 }}>
+            <Tag
+              color={stream.verification.is_consistent ? 'green' : 'orange'}
+              style={{ fontSize: 11 }}
+            >
+              의도 일치 {(stream.verification.score * 100).toFixed(0)}%
+            </Tag>
+            {stream.verification.back_translation && (
+              <Typography.Text
+                type="secondary"
+                style={{ fontSize: 11, display: 'block', marginTop: 2, fontStyle: 'italic' }}
+              >
+                "{stream.verification.back_translation}"
+              </Typography.Text>
+            )}
+          </div>
+        )}
+
+
+        {/* 설명 (설명 단계에서 미리 표시) */}
+        {stream.explanation && (
           <div
-            key={i}
             style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: '#1677ff',
-              animation: `sc-bounce 1.2s ${i * 0.18}s infinite`,
-              opacity: 0.75,
+              background: '#fff',
+              borderRadius: '4px 18px 18px 18px',
+              padding: '10px 14px',
+              border: '1px solid #f0f0f0',
+              fontSize: 13,
+              lineHeight: 1.7,
+              color: '#595959',
+              fontStyle: 'italic',
             }}
-          />
-        ))}
+          >
+            {stream.explanation}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -265,10 +336,104 @@ function PipelineSummaryBar({ result }: { result: QueryResult }) {
   );
 }
 
-// ── 어시스턴트 응답 카드 ───────────────────────────────────────
-function AssistantBubble({ entry }: { entry: ChatEntry }) {
-  if (entry.isLoading) return <LoadingBubble />;
+// ── 완료된 응답 카드 ───────────────────────────────────────────
+function ResultBubble({ result }: { result: QueryResult }) {
+  const r = result;
+  return (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Phase 3: Guardrails 경고 */}
+      {r.guardrails?.low_confidence_warning && (
+        <Alert
+          type="warning"
+          showIcon
+          message="낮은 신뢰도 경고"
+          description={r.guardrails.warning_message}
+          style={{ marginBottom: 10, borderRadius: '4px 12px 12px 12px', fontSize: 12 }}
+        />
+      )}
+      {r.guardrails?.rows_truncated && (
+        <Alert
+          type="info"
+          showIcon
+          message={`결과가 1,000행으로 제한됨 (전체 ${r.guardrails.original_row_count.toLocaleString()}행)`}
+          style={{ marginBottom: 8, borderRadius: '4px 12px 12px 12px', fontSize: 12 }}
+        />
+      )}
 
+      {/* 자연어 설명 */}
+      {r.explanation && (
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: '4px 18px 18px 18px',
+            padding: '12px 16px',
+            border: '1px solid #f0f0f0',
+            marginBottom: 10,
+            fontSize: 14,
+            lineHeight: 1.75,
+            color: '#262626',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+          }}
+        >
+          {r.explanation}
+        </div>
+      )}
+
+      {/* 파이프라인 실행 결과 요약 */}
+      <PipelineSummaryBar result={r} />
+
+      {/* 생성된 SQL (항상 표시) */}
+      <div style={{ marginBottom: 10 }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <SqlDisplay sql={r.original_sql} label="생성된 SQL" />
+          {r.was_corrected && (
+            <SqlDisplay sql={r.final_sql} label="최종 SQL (교정됨)" corrected />
+          )}
+          <SchemaContextDisplay schema={r.schema_context} />
+        </Space>
+      </div>
+
+
+      {/* 결과 테이블 */}
+      {r.result.columns.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <ResultTable
+            columns={r.result.columns}
+            rows={r.result.rows}
+            title="조회 결과"
+            maxRows={1000}
+          />
+        </div>
+      )}
+
+      {/* 메타데이터 태그 */}
+      <Space size={4} wrap style={{ marginBottom: 4 }}>
+        <Tag style={{ fontSize: 11 }}>{r.result.rows.length.toLocaleString()}행</Tag>
+        <Tag style={{ fontSize: 11 }}>{r.latency.toFixed(1)}s</Tag>
+        {r.was_corrected ? (
+          <Tag icon={<CheckCircleFilled />} color="orange" style={{ fontSize: 11 }}>
+            교정 완료
+          </Tag>
+        ) : (
+          <Tag icon={<ThunderboltFilled />} color="blue" style={{ fontSize: 11 }}>
+            즉시 생성
+          </Tag>
+        )}
+        {r.verification && (
+          <Tag
+            color={r.verification.is_consistent ? 'green' : 'volcano'}
+            style={{ fontSize: 11 }}
+          >
+            의도 일치 {(r.verification.similarity_score * 100).toFixed(0)}%
+          </Tag>
+        )}
+      </Space>
+    </div>
+  );
+}
+
+// ── 어시스턴트 말풍선 (스트리밍/완료 통합) ────────────────────
+function AssistantBubble({ entry }: { entry: ChatEntry }) {
   if (entry.error) {
     return (
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 18 }}>
@@ -280,154 +445,24 @@ function AssistantBubble({ entry }: { entry: ChatEntry }) {
           description={entry.error}
           type="error"
           showIcon
-          style={{
-            flex: 1,
-            borderRadius: '4px 12px 12px 12px',
-            fontSize: 13,
-          }}
+          style={{ flex: 1, borderRadius: '4px 12px 12px 12px', fontSize: 13 }}
         />
       </div>
     );
   }
 
-  if (!entry.result) return null;
-  const r = entry.result;
-
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 8,
-        marginBottom: 22,
-      }}
-    >
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 22 }}>
       <div style={avatarStyle}>
         <RobotOutlined style={{ fontSize: 14 }} />
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Phase 3: Guardrails 경고 */}
-        {r.guardrails?.low_confidence_warning && (
-          <Alert
-            type="warning"
-            showIcon
-            message="낮은 신뢰도 경고"
-            description={r.guardrails.warning_message}
-            style={{ marginBottom: 10, borderRadius: '4px 12px 12px 12px', fontSize: 12 }}
-          />
-        )}
-        {r.guardrails?.rows_truncated && (
-          <Alert
-            type="info"
-            showIcon
-            message={`결과가 1,000행으로 제한됨 (전체 ${r.guardrails.original_row_count.toLocaleString()}행)`}
-            style={{ marginBottom: 8, borderRadius: '4px 12px 12px 12px', fontSize: 12 }}
-          />
-        )}
-
-        {/* 자연어 설명 */}
-        {r.explanation && (
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '4px 18px 18px 18px',
-              padding: '12px 16px',
-              border: '1px solid #f0f0f0',
-              marginBottom: 10,
-              fontSize: 14,
-              lineHeight: 1.75,
-              color: '#262626',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-            }}
-          >
-            {r.explanation}
-          </div>
-        )}
-
-        {/* 파이프라인 실행 결과 요약 */}
-        <PipelineSummaryBar result={r} />
-
-        {/* 생성된 SQL (항상 표시) */}
-        <div style={{ marginBottom: 10 }}>
-          <Space direction="vertical" style={{ width: '100%' }} size="small">
-            <SqlDisplay sql={r.original_sql} label="생성된 SQL" />
-            {r.was_corrected && (
-              <SqlDisplay sql={r.final_sql} label="최종 SQL (교정됨)" corrected />
-            )}
-            <SchemaContextDisplay schema={r.schema_context} />
-          </Space>
-        </div>
-
-        {/* 교정 이력 (항상 표시, 교정이 있는 경우) */}
-        {r.correction_steps.length > 0 && (
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid #f0f0f0',
-              borderRadius: 8,
-              padding: '10px 14px',
-              marginBottom: 10,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: 10,
-              }}
-            >
-              <HistoryOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />
-              <Typography.Text style={{ fontSize: 12, color: '#595959' }}>
-                교정 이력
-              </Typography.Text>
-              <Tag style={{ fontSize: 11, margin: 0 }}>{r.correction_steps.length}회</Tag>
-            </div>
-            <CorrectionStepper
-              steps={r.correction_steps}
-              activeStep={r.correction_steps[0]?.round ?? 1}
-              onStepClick={() => {}}
-            />
-          </div>
-        )}
-
-        {/* 결과 테이블 */}
-        {r.result.columns.length > 0 && (
-          <div style={{ marginBottom: 8 }}>
-            <ResultTable
-              columns={r.result.columns}
-              rows={r.result.rows}
-              title="조회 결과"
-            />
-          </div>
-        )}
-
-        {/* 메타데이터 태그 */}
-        <Space size={4} wrap style={{ marginBottom: 4 }}>
-          <Tag style={{ fontSize: 11 }}>
-            {r.result.rows.length.toLocaleString()}행
-          </Tag>
-          <Tag style={{ fontSize: 11 }}>{r.latency.toFixed(1)}s</Tag>
-          {r.was_corrected ? (
-            <Tag icon={<CheckCircleFilled />} color="orange" style={{ fontSize: 11 }}>
-              교정 완료
-            </Tag>
-          ) : (
-            <Tag icon={<ThunderboltFilled />} color="blue" style={{ fontSize: 11 }}>
-              즉시 생성
-            </Tag>
-          )}
-          {r.verification && (
-            <Tag
-              color={r.verification.is_consistent ? 'green' : 'volcano'}
-              style={{ fontSize: 11 }}
-            >
-              의도 일치 {(r.verification.similarity_score * 100).toFixed(0)}%
-            </Tag>
-          )}
-        </Space>
-      </div>
+      {/* 스트리밍 중: StreamingBubble / 완료: ResultBubble */}
+      {entry.isLoading || entry.stream.finalResult === null ? (
+        <StreamingBubble stream={entry.stream} />
+      ) : (
+        <ResultBubble result={entry.stream.finalResult} />
+      )}
     </div>
   );
 }
@@ -438,9 +473,9 @@ export default function QueryPage() {
   const [inputText, setInputText] = useState('');
   const [selectedDb, setSelectedDb] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortRefs = useRef<Map<string, AbortController>>(new Map());
 
   const { data: dbData, isLoading: dbLoading } = useDatabases();
-  const mutation = useRunQuery();
 
   // DB 목록 로드 후 첫 번째 DB 자동 선택
   useEffect(() => {
@@ -456,55 +491,149 @@ export default function QueryPage() {
 
   const isAnyLoading = entries.some((e) => e.isLoading);
 
+  // ── 스트림 이벤트 → StreamState 업데이트 ─────────────────────
+  const updateStream = useCallback(
+    (id: string, updater: (prev: StreamState) => StreamState) => {
+      setEntries((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, stream: updater(e.stream) } : e)),
+      );
+    },
+    [],
+  );
+
   const handleSubmit = () => {
     if (!inputText.trim() || !selectedDb || isAnyLoading) return;
 
     const id = crypto.randomUUID();
     const question = inputText.trim();
 
-    // Phase 3: 이전 성공 턴에서 conversation_history 구성 (최근 3턴)
+    // 멀티턴 히스토리 (최근 3턴 성공 턴)
     const history = entries
-      .filter((e) => e.result !== null && !e.error)
+      .filter((e) => e.stream.finalResult !== null && !e.error)
       .slice(-3)
       .map((e) => ({
         question: e.question,
-        sql: e.result!.final_sql,
-        explanation: e.result!.explanation,
+        sql: e.stream.finalResult!.final_sql,
+        explanation: e.stream.finalResult!.explanation,
       }));
 
     setEntries((prev) => [
       ...prev,
-      { id, question, result: null, isLoading: true, error: null },
+      { id, question, stream: initialStreamState(), isLoading: true, error: null },
     ]);
     setInputText('');
 
-    mutation.mutate(
+    const abortController = new AbortController();
+    abortRefs.current.set(id, abortController);
+
+    streamQuery(
       {
         query: question,
         db_id: selectedDb,
-        dataset:
-          dbData?.databases.find((d) => d.id === selectedDb)?.dataset || 'hrdb',
+        dataset: dbData?.databases.find((d) => d.id === selectedDb)?.dataset || 'hrdb',
         conversation_history: history,
       },
-      {
-        onSuccess: (data) => {
-          setEntries((prev) =>
-            prev.map((e) =>
-              e.id === id ? { ...e, result: data, isLoading: false } : e,
-            ),
-          );
-        },
-        onError: (err) => {
-          setEntries((prev) =>
-            prev.map((e) =>
-              e.id === id
-                ? { ...e, error: (err as Error).message, isLoading: false }
-                : e,
-            ),
-          );
-        },
+      (event, data) => {
+        const d = data as Record<string, unknown>;
+        switch (event) {
+          case 'step':
+            updateStream(id, (s) => ({ ...s, stage: d.stage as StreamState['stage'] }));
+            break;
+          case 'sql_generated':
+            updateStream(id, (s) => ({
+              ...s,
+              sql: d.sql as string,
+              confidence: d.confidence as number,
+            }));
+            break;
+          case 'validated':
+            updateStream(id, (s) => ({
+              ...s,
+              validation: {
+                success: d.success as boolean,
+                error_type: (d.error_type as string | null) ?? null,
+              },
+            }));
+            break;
+          case 'verified':
+            updateStream(id, (s) => ({
+              ...s,
+              verification: {
+                score: d.score as number,
+                is_consistent: d.is_consistent as boolean,
+                back_translation: (d.back_translation as string) || '',
+              },
+            }));
+            break;
+          case 'corrected':
+            updateStream(id, (s) => ({
+              ...s,
+              correctionSteps: [
+                ...s.correctionSteps,
+                {
+                  round: d.round as number,
+                  error_type: d.error_type as string,
+                  original_sql: d.original_sql as string,
+                  corrected_sql: d.corrected_sql as string,
+                  validation_success: d.validation_success as boolean,
+                  semantic_score: d.semantic_score as number,
+                },
+              ],
+            }));
+            break;
+          case 'explanation':
+            updateStream(id, (s) => ({ ...s, explanation: d.text as string }));
+            break;
+          case 'result':
+            setEntries((prev) =>
+              prev.map((e) =>
+                e.id === id
+                  ? {
+                      ...e,
+                      isLoading: false,
+                      stream: { ...e.stream, finalResult: d as unknown as QueryResult },
+                    }
+                  : e,
+              ),
+            );
+            break;
+          case 'error':
+            setEntries((prev) =>
+              prev.map((e) =>
+                e.id === id
+                  ? { ...e, isLoading: false, error: (d.message as string) || '알 수 없는 오류' }
+                  : e,
+              ),
+            );
+            break;
+        }
       },
-    );
+      abortController.signal,
+    )
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.id === id ? { ...e, isLoading: false, error: err.message } : e,
+          ),
+        );
+      })
+      .finally(() => {
+        abortRefs.current.delete(id);
+        // 스트림이 끝났는데 finalResult가 없으면 isLoading 해제
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.id === id && e.isLoading ? { ...e, isLoading: false } : e,
+          ),
+        );
+      });
+  };
+
+  const handleClearHistory = () => {
+    // 진행 중인 스트림 모두 중단
+    abortRefs.current.forEach((ctrl) => ctrl.abort());
+    abortRefs.current.clear();
+    setEntries([]);
   };
 
   return (
@@ -520,14 +649,6 @@ export default function QueryPage() {
         boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
       }}
     >
-      {/* 타이핑 애니메이션 키프레임 */}
-      <style>{`
-        @keyframes sc-bounce {
-          0%, 60%, 100% { transform: translateY(0); }
-          30% { transform: translateY(-7px); }
-        }
-      `}</style>
-
       {/* ── 상단 헤더: DB 선택 ── */}
       <div
         style={{
@@ -563,7 +684,7 @@ export default function QueryPage() {
               size="small"
               type="text"
               icon={<DeleteOutlined />}
-              onClick={() => setEntries([])}
+              onClick={handleClearHistory}
               style={{ color: '#bfbfbf' }}
             />
           </Tooltip>

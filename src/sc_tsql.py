@@ -16,6 +16,7 @@ import json
 import sqlite3
 import time
 from dataclasses import dataclass, field
+from typing import Callable
 
 from src.schema_linker import SchemaLinker
 from src.sql_generator import SQLGenerator
@@ -37,6 +38,14 @@ class AblationFlags:
     use_generic_correction_prompt: bool = False
     # Phase 2 어블레이션: True면 few-shot cross-encoder reranking을 비활성화한다.
     disable_reranking: bool = False
+    # Improvement #3 어블레이션: True면 Corrector 프롬프트에 이전 라운드 교정 이력을 포함하지 않는다.
+    disable_correction_history: bool = False
+    # RQ1 순수 어블레이션: True면 NLI 검증 자체는 수행(지표 보고용)하되,
+    # 교정 트리거에서는 NLI 불일치를 사용하지 않는다. reranker/지표 계산은 유지.
+    # → "NLI의 교정 기여도"만 분리 측정. disable_semantic_verifier와의 차이:
+    #   disable_semantic_verifier=True는 NLI 모델 자체를 건드리지 않고 결과를 항상 '일치'로 둠
+    #   (reranker=None으로 설정되어 SQL 생성도 달라짐 → 순수 NLI 기여 측정 불가).
+    disable_nli_correction_trigger: bool = False
 
 
 @dataclass
@@ -57,6 +66,8 @@ class SCTSQLResult:
     sql_confidence: float = 0.5           # SQL 생성 신뢰도 (logprob 기반, 0~1)
     # Phase 3: Guardrails 결과
     guardrails: OutputGuardrailsResult | None = None
+    # 스키마 링커가 선택한 테이블/컬럼 (UI schema_context용)
+    schema_context: dict = field(default_factory=dict)
 
 
 class SCTSQL:
@@ -172,6 +183,8 @@ class SCTSQL:
         self,
         query: str,
         conversation_history: list[dict] | None = None,
+        on_event: Callable[[str, dict], None] | None = None,
+        evidence: str = "",
     ) -> SCTSQLResult:
         """
         Section 4: 전체 파이프라인을 실행한다.
@@ -188,7 +201,12 @@ class SCTSQL:
         stage_latency = {}
         correction_history = []
 
+        def _emit(event: str, data: dict) -> None:
+            if on_event is not None:
+                on_event(event, data)
+
         # Step 1: Schema Linking (Section 4.2)
+        _emit("step", {"stage": "schema_link"})
         t0 = time.time()
         if self.schema_linker is not None:
             schema_context = self.schema_linker.link(query)
@@ -197,23 +215,28 @@ class SCTSQL:
         stage_latency["schema_linking"] = round(time.time() - t0, 3)
 
         # Step 2: SQL Generation (Section 4.3)
+        _emit("step", {"stage": "sql_generating"})
         t0 = time.time()
         gen_result = self.sql_generator.generate(
             query, schema_context,
             conversation_history=conversation_history or [],
+            evidence=evidence,
         )
         current_sql = gen_result["sql"]
         sql_confidence = gen_result["confidence"]
         stage_latency["sql_generation"] = round(time.time() - t0, 3)
+        _emit("sql_generated", {"sql": current_sql, "confidence": round(sql_confidence, 4)})
 
         # Step 3: Self-Correction Loop (Section 4.4, 최대 K회)
         validation_result = None
         verification_result = None
+        prev_error_type = None  # 연속 동일 오류 감지용
 
         for round_num in range(1, self.max_rounds + 1):
             t0 = time.time()
 
             # Section 4.4.1: 실행 기반 검증
+            _emit("step", {"stage": "validating", "round": round_num})
             if not self.ablation.disable_execution_validator:
                 validation_result = self.execution_validator.validate(current_sql, self.db_path)
             else:
@@ -222,8 +245,13 @@ class SCTSQL:
                     error_type=None, error_message=None,
                     is_empty=False, is_excessive=False, row_count=0,
                 )
+            _emit("validated", {
+                "success": validation_result.success,
+                "error_type": validation_result.error_type,
+            })
 
             # Section 4.4.2: 의미론적 일관성 검증
+            _emit("step", {"stage": "verifying", "round": round_num})
             if not self.ablation.disable_semantic_verifier:
                 verification_result = self.semantic_verifier.verify(query, current_sql)
             else:
@@ -233,9 +261,17 @@ class SCTSQL:
                     is_consistent=True,
                     mismatch_diagnosis=None,
                 )
+            _emit("verified", {
+                "score": round(verification_result.similarity_score, 4),
+                "is_consistent": verification_result.is_consistent,
+                "back_translation": verification_result.back_translation,
+            })
 
-            # 교정 필요 여부 판단
-            needs_correction = self._needs_correction(validation_result, verification_result)
+            # 교정 필요 여부 판단 (Fix 1·2: sql_confidence + NLI 트리거 비활성 옵션 반영)
+            needs_correction = self._needs_correction(
+                validation_result, verification_result,
+                sql_confidence=sql_confidence,
+            )
 
             if not needs_correction:
                 stage_latency[f"correction_round_{round_num}"] = round(time.time() - t0, 3)
@@ -243,6 +279,18 @@ class SCTSQL:
 
             # Section 4.4.3: 교정
             error_type = validation_result.error_type or "SEMANTIC_MISMATCH"
+
+            # 연속 동일 오류(E3/E2)가 반복되면 교정 불가로 판단하고 조기 종료
+            # (같은 지시문으로 재시도해도 개선 불가 — 실험 데이터에서 11회 패턴 확인)
+            if (
+                error_type == prev_error_type
+                and error_type in ("E3_NO_SUCH_COLUMN", "E2_NO_SUCH_TABLE")
+            ):
+                stage_latency[f"correction_round_{round_num}"] = round(time.time() - t0, 3)
+                break
+
+            prev_error_type = error_type
+            _emit("step", {"stage": "correcting", "round": round_num})
             correction_entry = {
                 "round": round_num,
                 "error_type": error_type,
@@ -252,11 +300,24 @@ class SCTSQL:
             }
 
             corrected_sql = self.corrector.correct(
-                query, current_sql, validation_result, verification_result
+                query, current_sql, validation_result, verification_result,
+                schema_context=schema_context,
+                correction_history=(
+                    [] if self.ablation.disable_correction_history else correction_history
+                ),
+                evidence=evidence,
             )
 
             correction_entry["corrected_sql"] = corrected_sql
             correction_history.append(correction_entry)
+            _emit("corrected", {
+                "round": round_num,
+                "error_type": error_type,
+                "original_sql": correction_entry["original_sql"],
+                "corrected_sql": corrected_sql,
+                "semantic_score": round(verification_result.similarity_score, 4),
+                "validation_success": False,
+            })
 
             current_sql = corrected_sql
             stage_latency[f"correction_round_{round_num}"] = round(time.time() - t0, 3)
@@ -269,11 +330,13 @@ class SCTSQL:
         results = validation_result.results if validation_result.success else []
         column_names = validation_result.column_names if validation_result.success else []
 
+        _emit("step", {"stage": "explaining"})
         t0 = time.time()
         explanation = self.result_explainer.explain(
             query, current_sql, results, correction_history
         )
         stage_latency["explanation"] = round(time.time() - t0, 3)
+        _emit("explanation", {"text": explanation})
 
         latency = time.time() - total_start
 
@@ -305,27 +368,44 @@ class SCTSQL:
             stage_latency=stage_latency,
             sql_confidence=sql_confidence,
             guardrails=guardrails_result,
+            schema_context=schema_context,
         )
+
+    # Fix 2: 모델이 logprob 기반으로 매우 확신하는 SQL(≥ HIGH_CONF)은
+    # NLI만으로는 교정을 트리거하지 않는다. 실행 오류·empty·excessive은 여전히 교정.
+    # → Phase 1 분석에서 conf=0.99 SQL이 NLI score=0.4로 교정 트리거되어 망가지는 사례 확인.
+    HIGH_CONF_SQL_THRESHOLD = 0.90
 
     def _needs_correction(
         self,
         validation_result: ValidationResult,
         verification_result: VerificationResult,
+        sql_confidence: float = 0.5,
     ) -> bool:
         """
         Section 4.4: 교정이 필요한지 판단한다.
 
         교정 조건:
         1. 실행 실패 (E1~E6) — 항상 교정
-        2. 결과 비어있음(E7) 또는 과대(E8) **그리고** 의미 불일치(NLI < θ)
-           — E7/E8은 단독으로는 "의심 플래그"일 뿐이며, 정답도 0행이거나
-             >1000행일 수 있다(BIRD에 실제 존재). 따라서 의미 검증까지
-             불일치로 판정된 경우에만 교정 트리거로 쓴다. 이는 valid
-             empty/large gold에 대한 오탐을 줄여 실측 신뢰도를 높인다.
-        3. 실행은 정상이지만 의미 불일치 — 교정
+        2. 결과 비어있음(E7)/과대(E8) + NLI 불일치 — 교정
+           (단독 empty/large는 valid gold일 수 있어 NLI 확인 필요)
+        3. 실행 정상 + NLI 불일치 — 조건부 교정
+           - score < 0.05: NLI 오탐으로 간주, 스킵
+           - sql_confidence ≥ HIGH_CONF (Fix 2): 모델이 확신하는 SQL은
+             NLI만으로 교정하지 않음 → 과잉 교정 방지
+           - 그 외: 교정
+
+        Ablation:
+          disable_nli_correction_trigger=True면 NLI 불일치로 인한 교정 트리거를 모두 비활성화
+          (실행 오류/empty/excessive는 여전히 교정됨).
         """
         if not validation_result.success:
             return True
+
+        # NLI 트리거가 어블레이션으로 꺼져 있으면 empty/excessive도 NLI와 독립
+        if self.ablation.disable_nli_correction_trigger:
+            # empty/excessive만으로는 교정하지 않음 (원래도 NLI 병용 조건이었음)
+            return False
 
         if validation_result.is_empty or validation_result.is_excessive:
             if not verification_result.is_consistent:
@@ -333,6 +413,12 @@ class SCTSQL:
             return False
 
         if not verification_result.is_consistent:
+            # 오탐 필터: score가 0에 가까우면 NLI 자체가 불안정하다고 보고 스킵
+            if verification_result.similarity_score < 0.05:
+                return False
+            # Fix 2: 고신뢰 SQL은 NLI만으로 교정 금지
+            if sql_confidence >= self.HIGH_CONF_SQL_THRESHOLD:
+                return False
             return True
 
         return False

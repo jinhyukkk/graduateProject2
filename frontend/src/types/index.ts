@@ -87,6 +87,42 @@ export interface QueryResult {
 }
 
 // ============================================================
+// Streaming query types
+// ============================================================
+
+/** sc_tsql.py の on_event が emit するパイプラインステージ名 */
+export type PipelineStage =
+  | 'schema_link'
+  | 'sql_generating'
+  | 'validating'
+  | 'verifying'
+  | 'correcting'
+  | 'explaining';
+
+/** QueryPage でストリーミング中に蓄積する状態 */
+export interface StreamState {
+  stage: PipelineStage | null;
+  sql: string | null;
+  confidence: number | null;
+  validation: { success: boolean; error_type: string | null } | null;
+  verification: { score: number; is_consistent: boolean; back_translation: string } | null;
+  correctionSteps: CorrectionStep[];
+  explanation: string | null;
+  finalResult: QueryResult | null;
+}
+
+export const initialStreamState = (): StreamState => ({
+  stage: null,
+  sql: null,
+  confidence: null,
+  validation: null,
+  verification: null,
+  correctionSteps: [],
+  explanation: null,
+  finalResult: null,
+});
+
+// ============================================================
 // Experiment types
 // ============================================================
 

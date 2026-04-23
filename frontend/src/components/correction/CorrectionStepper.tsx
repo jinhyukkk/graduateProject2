@@ -8,8 +8,6 @@ import SqlDisplay from '../query/SqlDisplay';
 
 interface CorrectionStepperProps {
   steps: CorrectionStep[];
-  activeStep: number;
-  onStepClick: (step: number) => void;
 }
 
 const ERROR_TYPE_COLOR: Record<string, string> = {

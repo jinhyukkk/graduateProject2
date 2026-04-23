@@ -19,7 +19,7 @@ import {
 import { useExperimentQueryDetail } from '../hooks/useApi';
 import SqlDisplay from '../components/query/SqlDisplay';
 import ResultTable from '../components/query/ResultTable';
-import CorrectionTimeline from '../components/correction/CorrectionTimeline';
+import CorrectionStepper from '../components/correction/CorrectionStepper';
 
 export default function QueryDetailPage() {
   const { id: expId, qid } = useParams<{ id: string; qid: string }>();
@@ -105,8 +105,12 @@ export default function QueryDetailPage() {
         </Col>
       </Row>
 
-      {/* Correction Timeline */}
-      <CorrectionTimeline history={detail.correction_history} />
+      {/* Correction History */}
+      {detail.correction_history.length > 0 && (
+        <Card size="small" title="Correction History" style={{ marginBottom: 16 }}>
+          <CorrectionStepper steps={detail.correction_history} />
+        </Card>
+      )}
 
       {/* Validation & Verification */}
       {detail.final_validation && (

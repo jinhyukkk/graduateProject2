@@ -9,6 +9,8 @@ import os
 import numpy as np
 from openai import OpenAI
 
+from src.openai_retry import chat_completion, embeddings as embeddings_call
+
 
 class SQLGenerator:
     """
@@ -46,12 +48,18 @@ class SQLGenerator:
         self._example_embeddings = None
 
     def _get_embedding(self, texts: list[str]) -> np.ndarray:
-        """OpenAI 임베딩 API로 텍스트 리스트를 임베딩한다."""
-        response = self.client.embeddings.create(
-            model=self.embedding_model,
-            input=texts,
-        )
-        return np.array([item.embedding for item in response.data], dtype=np.float32)
+        """OpenAI 임베딩 API로 텍스트 리스트를 임베딩한다. 2048개씩 배치 처리."""
+        batch_size = 2048
+        all_embeddings = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            response = embeddings_call(
+                self.client,
+                model=self.embedding_model,
+                input=batch,
+            )
+            all_embeddings.extend([item.embedding for item in response.data])
+        return np.array(all_embeddings, dtype=np.float32)
 
     def _compute_example_embeddings(self):
         """few-shot 예시들의 임베딩을 미리 계산한다."""
@@ -140,6 +148,7 @@ class SQLGenerator:
         query: str,
         schema_context: dict,
         conversation_history: list[dict] | None = None,
+        evidence: str = "",
     ) -> dict:
         """
         Section 4.3 + Phase 2 + Phase 3: SQL을 생성하고 신뢰도 점수를 함께 반환한다.
@@ -148,7 +157,7 @@ class SQLGenerator:
             query: 자연어 질의
             schema_context: SchemaLinker.link()의 반환값 (schema_text 포함)
             conversation_history: 이전 대화 이력 (Phase 3 멀티턴).
-                각 항목: {"question": str, "sql": str, "explanation": str}
+            evidence: 외부 도메인 지식(BIRD evidence). 비어있으면 무시.
 
         Returns:
             {
@@ -161,20 +170,23 @@ class SQLGenerator:
 
         few_shot_block = self._format_few_shot(selected_examples)
         history_block = self._format_conversation_history(conversation_history or [])
+        evidence_block = f"\n## External Knowledge / Hint\n{evidence.strip()}\n" if evidence and evidence.strip() else ""
 
         prompt = f"""You are an expert SQL query generator. Given a database schema and a natural language question, generate the correct SQL query.
 
 ## Database Schema
 {schema_text}
-
+{evidence_block}
 ## Guidelines
 1. Use only the tables and columns provided in the schema above.
-2. Use proper JOIN conditions based on foreign key relationships.
+2. Use proper JOIN conditions based on foreign key relationships shown in FOREIGN KEY definitions.
 3. Be careful with aggregate functions (COUNT, SUM, AVG, etc.) and GROUP BY clauses.
-4. Use appropriate WHERE clauses for filtering.
-5. Handle NULL values appropriately.
-6. Do NOT use subqueries unless necessary.
-7. Return ONLY the SQL query, no explanations.
+4. Use appropriate WHERE clauses for filtering. Match the exact case and format of values shown in column comments (-- e.g.: ...).
+5. When filtering on a column that may contain NULLs, explicitly add IS NOT NULL unless the question asks for NULL values.
+6. Always alias every table (e.g. T1, T2) and qualify all column references with the alias (e.g. T1.column_name) to avoid ambiguity.
+7. Do NOT use subqueries unless necessary.
+8. If an "External Knowledge / Hint" section is provided, treat it as authoritative domain knowledge and reflect it in the SQL.
+9. Return ONLY the SQL query, no explanations.
 
 {few_shot_block}{history_block}
 ## Question
@@ -183,7 +195,8 @@ class SQLGenerator:
 ## SQL
 """
 
-        response = self.client.chat.completions.create(
+        response = chat_completion(
+            self.client,
             model=self.llm_model,
             temperature=self.config["llm"]["temperature"],
             max_completion_tokens=self.config["llm"]["max_tokens"],

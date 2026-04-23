@@ -10,6 +10,8 @@ import numpy as np
 import faiss
 from openai import OpenAI
 
+from src.openai_retry import chat_completion, embeddings as embeddings_call
+
 
 class SchemaLinker:
     """
@@ -91,13 +93,22 @@ class SchemaLinker:
         return metadata
 
     def _get_embedding(self, texts: list[str]) -> np.ndarray:
-        """OpenAI 임베딩 API로 텍스트 리스트를 임베딩한다."""
-        response = self.client.embeddings.create(
-            model=self.embedding_model,
-            input=texts,
-        )
-        embeddings = [item.embedding for item in response.data]
-        return np.array(embeddings, dtype=np.float32)
+        """OpenAI 임베딩 API로 텍스트 리스트를 임베딩한다.
+
+        OpenAI Embeddings API는 요청당 최대 2048개 입력 제한이 있으므로
+        2048개씩 배치로 나눠 호출한다.
+        """
+        batch_size = 2048
+        all_embeddings = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            response = embeddings_call(
+                self.client,
+                model=self.embedding_model,
+                input=batch,
+            )
+            all_embeddings.extend(item.embedding for item in response.data)
+        return np.array(all_embeddings, dtype=np.float32)
 
     def build_index(self):
         """
@@ -232,7 +243,8 @@ class SchemaLinker:
 
 Return ONLY the JSON, no other text."""
 
-        response = self.client.chat.completions.create(
+        response = chat_completion(
+            self.client,
             model=self.llm_model,
             temperature=self.config["llm"]["temperature"],
             max_completion_tokens=self.config["llm"]["max_tokens"],
@@ -290,7 +302,9 @@ Return ONLY the JSON, no other text."""
             col_defs = []
             for col in table_info["columns"]:
                 if selected_cols is None or col["name"] in selected_cols:
-                    col_defs.append(f"  {col['name']} {col['type']}")
+                    sample = col.get("sample_values", [])
+                    comment = f"  -- e.g.: {', '.join(sample)}" if sample else ""
+                    col_defs.append(f"  {col['name']} {col['type']}{comment}")
 
             fk_defs = []
             for fk in table_info["foreign_keys"]:

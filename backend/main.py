@@ -30,6 +30,14 @@ BACKEND_PARENT_DIR = os.path.dirname(BACKEND_PARENT)
 if BACKEND_PARENT_DIR not in sys.path:
     sys.path.insert(0, BACKEND_PARENT_DIR)
 
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

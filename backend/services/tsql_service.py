@@ -12,7 +12,7 @@ import asyncio
 from collections import Counter
 from dataclasses import dataclass, field as dc_field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import yaml
 
@@ -183,6 +183,52 @@ def get_schema_info(db_path: str) -> dict:
     return {"tables": tables, "foreign_keys": all_fks}
 
 
+def schema_context_to_ui(schema_context: dict, db_path: str) -> dict:
+    """
+    SCTSQLResult.schema_context (링커 형식) → UI schema_context 형식으로 변환한다.
+
+    링커 형식: {"tables": ["t1","t2"], "columns": {"t1": ["c1",...]}, "foreign_keys": [...]}
+    UI 형식:   {"tables": [{"name": "t1", "columns": [{"name","type","is_primary_key"}]}], "foreign_keys": [...]}
+
+    링커가 columns에 type/PK 정보를 갖고 있지 않으므로 DB에서 보완한다.
+    schema_context가 비어있으면 get_schema_info()로 fallback한다.
+    """
+    selected_tables = schema_context.get("tables", [])
+    if not selected_tables:
+        return get_schema_info(db_path)
+
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2.0)
+        cursor = conn.cursor()
+
+        tables = []
+        all_fks = []
+        for table_name in selected_tables:
+            cursor.execute(f"PRAGMA table_info(`{table_name}`);")
+            columns = []
+            for col_info in cursor.fetchall():
+                columns.append({
+                    "name": col_info[1],
+                    "type": col_info[2] or "TEXT",
+                    "is_primary_key": bool(col_info[5]),
+                })
+            tables.append({"name": table_name, "columns": columns})
+
+            cursor.execute(f"PRAGMA foreign_key_list(`{table_name}`);")
+            for fk in cursor.fetchall():
+                all_fks.append({
+                    "from_table": table_name,
+                    "from_column": fk[3],
+                    "to_table": fk[2],
+                    "to_column": fk[4],
+                })
+
+        conn.close()
+        return {"tables": tables, "foreign_keys": all_fks}
+    except Exception:
+        return get_schema_info(db_path)
+
+
 # ────────────────────────────────────────────────────────────
 # Single query execution
 # ────────────────────────────────────────────────────────────
@@ -226,8 +272,8 @@ def run_query(
     # Build response
     query_id = f"q_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{id(result) % 0xFFFFFF:06x}"
 
-    # Schema context
-    schema_info = get_schema_info(db_path)
+    # Schema context: 링커가 선택한 테이블만 포함
+    schema_info = schema_context_to_ui(result.schema_context, db_path)
 
     # Correction steps
     correction_steps = []
@@ -311,6 +357,153 @@ def run_query(
         "sql_confidence": round(result.sql_confidence, 4),
         "guardrails": guardrails_info,
     }
+
+
+# ────────────────────────────────────────────────────────────
+# Streaming query execution (SSE)
+# ────────────────────────────────────────────────────────────
+
+async def run_query_stream(
+    query: str,
+    db_id: str,
+    dataset: str = "hrdb",
+    conversation_history: list[dict] | None = None,
+) -> AsyncGenerator[str, None]:
+    """
+    SC-TSQL 파이프라인을 실행하면서 SSE 이벤트를 실시간으로 yield한다.
+    각 파이프라인 단계가 완료될 때마다 클라이언트로 이벤트를 전송한다.
+    """
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def emit(event_type: str, data: dict) -> None:
+        """스레드에서 asyncio 큐에 안전하게 이벤트를 삽입한다."""
+        loop.call_soon_threadsafe(queue.put_nowait, (event_type, data))
+
+    def run_pipeline() -> None:
+        try:
+            db_path = resolve_db_path(dataset, db_id)
+
+            if not SRC_AVAILABLE:
+                raise RuntimeError(
+                    f"src/ modules not available (import error: {_import_error}). "
+                    "Ensure all dependencies are installed."
+                )
+
+            config = load_config()
+            if config.get("use_langgraph", False):
+                # LangGraph 오케스트레이터는 on_event 미지원 — 일반 파이프라인으로 fallback
+                pipeline = SCTSQL(db_path, config)
+            else:
+                pipeline = SCTSQL(db_path, config)
+
+            result: SCTSQLResult = pipeline.run(
+                query,
+                conversation_history=conversation_history or [],
+                on_event=emit,
+            )
+
+            # 최종 결과 직렬화 (링커가 선택한 테이블만 포함)
+            schema_info = schema_context_to_ui(result.schema_context, db_path)
+            query_id = (
+                f"q_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+                f"_{id(result) % 0xFFFFFF:06x}"
+            )
+
+            correction_steps = []
+            for entry in result.correction_history:
+                correction_steps.append({
+                    "round": entry["round"],
+                    "error_type": entry.get("error_type", "UNKNOWN"),
+                    "original_sql": entry.get("original_sql", ""),
+                    "corrected_sql": entry.get("corrected_sql", ""),
+                    "validation_success": entry.get("validation_success", False),
+                    "semantic_score": entry.get("semantic_score", 0.0),
+                })
+
+            original_sql = (
+                correction_steps[0]["original_sql"]
+                if correction_steps
+                else result.final_sql
+            )
+
+            rows = []
+            for row_tuple in result.results:
+                row_dict = {}
+                for i, col_name in enumerate(result.column_names):
+                    row_dict[col_name] = row_tuple[i] if i < len(row_tuple) else None
+                rows.append(row_dict)
+
+            validation = {
+                "success": True, "error_type": None, "error_message": None,
+                "is_empty": False, "is_excessive": False, "row_count": 0,
+            }
+            if result.final_validation is not None:
+                validation = {
+                    "success": result.final_validation.success,
+                    "error_type": result.final_validation.error_type,
+                    "error_message": result.final_validation.error_message,
+                    "is_empty": result.final_validation.is_empty,
+                    "is_excessive": result.final_validation.is_excessive,
+                    "row_count": result.final_validation.row_count,
+                }
+
+            verification = {
+                "back_translation": "", "similarity_score": 0.0,
+                "is_consistent": True, "mismatch_diagnosis": None,
+            }
+            if result.final_verification is not None:
+                verification = {
+                    "back_translation": result.final_verification.back_translation,
+                    "similarity_score": result.final_verification.similarity_score,
+                    "is_consistent": result.final_verification.is_consistent,
+                    "mismatch_diagnosis": result.final_verification.mismatch_diagnosis,
+                }
+
+            guardrails_info = {
+                "rows_truncated": False, "original_row_count": 0,
+                "low_confidence_warning": False, "warning_message": "",
+            }
+            if result.guardrails is not None:
+                guardrails_info = {
+                    "rows_truncated": result.guardrails.rows_truncated,
+                    "original_row_count": result.guardrails.original_row_count,
+                    "low_confidence_warning": result.guardrails.low_confidence_warning,
+                    "warning_message": result.guardrails.warning_message,
+                }
+
+            emit("result", {
+                "id": query_id,
+                "query": result.query,
+                "db_id": db_id,
+                "original_sql": original_sql,
+                "final_sql": result.final_sql,
+                "was_corrected": len(result.correction_history) > 0,
+                "correction_steps": correction_steps,
+                "schema_context": schema_info,
+                "result": {"columns": result.column_names, "rows": rows},
+                "explanation": result.explanation,
+                "latency": round(result.latency, 2),
+                "validation": validation,
+                "verification": verification,
+                "sql_confidence": round(result.sql_confidence, 4),
+                "guardrails": guardrails_info,
+            })
+        except Exception as e:
+            emit("error", {"message": str(e)})
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, None)  # sentinel
+
+    executor_future = loop.run_in_executor(None, run_pipeline)
+
+    while True:
+        msg = await queue.get()
+        if msg is None:
+            break
+        event_type, data = msg
+        yield f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    await executor_future
 
 
 # ────────────────────────────────────────────────────────────

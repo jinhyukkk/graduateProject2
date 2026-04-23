@@ -75,7 +75,6 @@ export function useRunQuery() {
       query: string;
       db_id: string;
       dataset?: string;
-      // Phase 3: 멀티턴 대화 히스토리
       conversation_history?: Array<{ question: string; sql: string; explanation?: string }>;
     }) =>
       fetchJson<QueryResult>('/api/query', {
@@ -83,6 +82,79 @@ export function useRunQuery() {
         body: JSON.stringify(payload),
       }),
   });
+}
+
+// ============================================================
+// Streaming query (SSE)
+// ============================================================
+
+export interface StreamQueryPayload {
+  query: string;
+  db_id: string;
+  dataset?: string;
+  conversation_history?: Array<{ question: string; sql: string; explanation?: string }>;
+}
+
+/**
+ * /api/query/stream へ POST し、SSE イベントをコールバックで返す。
+ * 各イベント: step / sql_generated / validated / verified / corrected / explanation / result / error
+ */
+export async function streamQuery(
+  payload: StreamQueryPayload,
+  onEvent: (event: string, data: unknown) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch('/api/query/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || `HTTP ${res.status}`);
+  }
+  if (!res.body) throw new Error('No response body');
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE メッセージは \n\n で区切られる
+      const messages = buffer.split('\n\n');
+      buffer = messages.pop() ?? '';
+
+      for (const message of messages) {
+        if (!message.trim()) continue;
+        const lines = message.split('\n');
+        let eventName = 'message';
+        let dataStr = '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) eventName = line.slice(7).trim();
+          else if (line.startsWith('data: ')) dataStr = line.slice(6).trim();
+        }
+
+        if (dataStr) {
+          try {
+            onEvent(eventName, JSON.parse(dataStr));
+          } catch {
+            onEvent(eventName, dataStr);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 // ============================================================
