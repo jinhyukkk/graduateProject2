@@ -1,0 +1,212 @@
+[
+  {
+    "id": 1,
+    "question": "재직 중인 전체 직원 수를 알려줘",
+    "SQL": "SELECT COUNT(*) AS emp_cnt FROM THRM151 WHERE STATUS_CD = 'S10' AND EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 2,
+    "question": "직원 전체 목록을 이름과 직급으로 보여줘",
+    "SQL": "SELECT h.NAME, t.JIKGUB_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL ORDER BY h.NAME",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 3,
+    "question": "개발1팀 소속 직원 명단을 보여줘",
+    "SQL": "SELECT h.NAME, t.JIKGUB_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '개발1팀' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 4,
+    "question": "이사 직급 직원 목록을 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '이사' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 5,
+    "question": "여성 직원 수는 몇 명이야?",
+    "SQL": "SELECT COUNT(*) AS female_cnt FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE h.SEX_TYPE = 'F' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 6,
+    "question": "팀장 직책을 맡은 직원 목록을 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.JIKGUB_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKCHAK_NM = '팀장' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 7,
+    "question": "가장 최근 급여 지급월은 언제야?",
+    "SQL": "SELECT MAX(PAY_ACTION_CD) AS latest_pay_month FROM TCPN303",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 8,
+    "question": "팀 단위 조직 목록을 보여줘",
+    "SQL": "SELECT ORG_CD, ORG_NM FROM TORG101 WHERE ORG_TYPE = 'W2002' ORDER BY ORG_CD",
+    "db_id": "hrdb",
+    "difficulty": "simple"
+  },
+  {
+    "id": 9,
+    "question": "부서별 직원 수를 많은 순으로 보여줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS emp_cnt FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY emp_cnt DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 10,
+    "question": "가장 최근 급여월 기준 직원별 총지급액을 높은 순으로 보여줘",
+    "SQL": "SELECT p.NAME, p.TOT_EARNING_MON FROM TCPN303 p WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303) ORDER BY p.TOT_EARNING_MON DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 11,
+    "question": "가장 최근 급여월 기준 부서별 평균 실지급액을 높은 순으로 보여줘",
+    "SQL": "SELECT o.ORG_NM, AVG(p.PAYMENT_MON) AS avg_pay FROM TCPN303 p JOIN TORG101 o ON p.ORG_CD = o.ORG_CD WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303) GROUP BY o.ORG_NM ORDER BY avg_pay DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 12,
+    "question": "이번 연도에 연차를 가장 많이 사용한 직원 상위 5명을 알려줘",
+    "SQL": "SELECT h.NAME, a.USED_CNT FROM TTIM511 a JOIN THRM100 h ON a.SABUN = h.SABUN WHERE a.YY = '2026' ORDER BY a.USED_CNT DESC LIMIT 5",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 13,
+    "question": "직급별 평균 총지급액을 직급 순서로 보여줘",
+    "SQL": "SELECT p.JIKGUB_CD, AVG(p.TOT_EARNING_MON) AS avg_earn FROM TCPN303 p WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303) GROUP BY p.JIKGUB_CD ORDER BY p.JIKGUB_CD",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 14,
+    "question": "5년 이상 근속한 직원 목록을 보여줘",
+    "SQL": "SELECT h.NAME, h.EMP_YMD, t.JIKGUB_NM, o.ORG_NM FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND CAST((SUBSTR('20260418',1,4) - SUBSTR(h.EMP_YMD,1,4)) AS INTEGER) >= 5 ORDER BY h.EMP_YMD",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 15,
+    "question": "이번 연도 잔여 연차가 10일 이상인 직원 목록을 알려줘",
+    "SQL": "SELECT h.NAME, a.REST_CNT FROM TTIM511 a JOIN THRM100 h ON a.SABUN = h.SABUN WHERE a.YY = '2026' AND a.REST_CNT >= 10 ORDER BY a.REST_CNT DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 16,
+    "question": "가장 최근 급여월 기준 초과 근무 시간이 있는 직원 수를 부서별로 알려줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS cnt FROM TCPN303 p JOIN TORG101 o ON p.ORG_CD = o.ORG_CD WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303) AND p.OVERTIME_HOUR > 0 GROUP BY o.ORG_NM ORDER BY cnt DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 17,
+    "question": "영업 관련 부서에 근무하는 직원 명단을 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.JIKGUB_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM IN ('영업1팀', '영업2팀') AND t.EDATE IS NULL ORDER BY o.ORG_NM, h.NAME",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 18,
+    "question": "이번 연도 연차 소진율이 가장 낮은 직원 5명을 알려줘",
+    "SQL": "SELECT h.NAME, ROUND(CAST(a.USED_CNT AS REAL) / a.CRE_CNT * 100, 1) AS use_rate FROM TTIM511 a JOIN THRM100 h ON a.SABUN = h.SABUN WHERE a.YY = '2026' AND a.CRE_CNT > 0 ORDER BY use_rate ASC LIMIT 5",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 19,
+    "question": "이사 직급이면서 팀장 직책을 맡은 직원 목록을 보여줘",
+    "SQL": "SELECT h.NAME, t.JIKGUB_NM, t.JIKCHAK_NM, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '이사' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 20,
+    "question": "부서별로 과장 이상 직급 직원 수를 보여줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS cnt FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND t.JIKGUB_NM IN ('과장', '차장', '부장', '이사') GROUP BY o.ORG_NM ORDER BY cnt DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium"
+  },
+  {
+    "id": 21,
+    "question": "3년 이상 근속했지만 한 번도 직급 변동이 없는 직원의 부서별 수를 알려줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS cnt FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND CAST((SUBSTR('20260418',1,4) - SUBSTR(h.EMP_YMD,1,4)) AS INTEGER) >= 3 AND t.SABUN NOT IN (SELECT SABUN FROM THRM151 WHERE EDATE IS NOT NULL GROUP BY SABUN) GROUP BY o.ORG_NM ORDER BY cnt DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 22,
+    "question": "가장 최근 급여월 기준 부서 내에서 가장 높은 급여를 받는 직원을 부서별로 조회해줘",
+    "SQL": "SELECT o.ORG_NM, p.NAME, p.TOT_EARNING_MON FROM TCPN303 p JOIN TORG101 o ON p.ORG_CD = o.ORG_CD WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303) AND p.TOT_EARNING_MON = (SELECT MAX(p2.TOT_EARNING_MON) FROM TCPN303 p2 WHERE p2.ORG_CD = p.ORG_CD AND p2.PAY_ACTION_CD = p.PAY_ACTION_CD) ORDER BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 23,
+    "question": "가장 최근 급여월 기준 초과 근무 시간이 전체 평균보다 높은 직원 목록을 보여줘",
+    "SQL": "SELECT p.NAME, o.ORG_NM, p.OVERTIME_HOUR FROM TCPN303 p JOIN TORG101 o ON p.ORG_CD = o.ORG_CD WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303) AND p.OVERTIME_HOUR > (SELECT AVG(OVERTIME_HOUR) FROM TCPN303 WHERE PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303)) ORDER BY p.OVERTIME_HOUR DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 24,
+    "question": "이번 연도 연차를 하나도 사용하지 않은 직원 목록과 소속 부서를 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, a.REST_CNT FROM TTIM511 a JOIN THRM100 h ON a.SABUN = h.SABUN JOIN THRM151 t ON h.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE a.YY = '2026' AND a.USED_CNT = 0 AND t.EDATE IS NULL ORDER BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 25,
+    "question": "개발본부 소속 전체 직원의 평균 급여와 전사 평균 급여를 비교해줘",
+    "SQL": "SELECT ROUND(AVG(CASE WHEN o.ORG_NM IN ('개발1팀','개발2팀','QA팀') THEN p.TOT_EARNING_MON ELSE NULL END), 0) AS dev_avg, ROUND(AVG(p.TOT_EARNING_MON), 0) AS all_avg FROM TCPN303 p JOIN TORG101 o ON p.ORG_CD = o.ORG_CD WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303)",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 26,
+    "question": "직급별 인원수와 평균 연차 잔여일 수를 같이 보여줘",
+    "SQL": "SELECT t.JIKGUB_NM, COUNT(*) AS emp_cnt, ROUND(AVG(a.REST_CNT), 1) AS avg_rest FROM THRM151 t JOIN TTIM511 a ON t.SABUN = a.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND a.YY = '2026' GROUP BY t.JIKGUB_NM ORDER BY emp_cnt DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 27,
+    "question": "가장 오래 근속한 직원 3명과 그들의 직급 및 부서를 알려줘",
+    "SQL": "SELECT h.NAME, h.EMP_YMD, t.JIKGUB_NM, o.ORG_NM FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL ORDER BY h.EMP_YMD ASC LIMIT 3",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 28,
+    "question": "부서별로 연차 잔여가 5일 미만인 직원 수를 보여줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS cnt FROM TTIM511 a JOIN THRM151 t ON a.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE a.YY = '2026' AND a.REST_CNT < 5 AND t.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY cnt DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 29,
+    "question": "남성과 여성 직원 각각의 평균 급여를 비교해줘",
+    "SQL": "SELECT h.SEX_TYPE, ROUND(AVG(p.TOT_EARNING_MON), 0) AS avg_earn FROM TCPN303 p JOIN THRM100 h ON p.SABUN = h.SABUN WHERE p.PAY_ACTION_CD = (SELECT MAX(PAY_ACTION_CD) FROM TCPN303) GROUP BY h.SEX_TYPE",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  },
+  {
+    "id": 30,
+    "question": "전체 직원 중 이번 연도 연차 소진율이 50% 이상인 직원 비율을 알려줘",
+    "SQL": "SELECT ROUND(CAST(SUM(CASE WHEN CAST(USED_CNT AS REAL) / CRE_CNT >= 0.5 THEN 1 ELSE 0 END) AS REAL) / COUNT(*) * 100, 1) AS pct FROM TTIM511 WHERE YY = '2026' AND CRE_CNT > 0",
+    "db_id": "hrdb",
+    "difficulty": "hard"
+  }
+]

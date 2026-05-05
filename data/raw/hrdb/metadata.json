@@ -1,0 +1,100 @@
+{
+  "_comment": "스키마 링커용 한글 메타데이터. 실제 스키마 교체 시 함께 업데이트할 것.",
+  "TB_EMP_MST": {
+    "description": "직원 마스터 — 사원번호, 성명, 소속, 직급 등 기본 인사정보",
+    "columns": {
+      "EMP_NO": "사원번호",
+      "EMP_NM": "사원명",
+      "DEPT_CD": "소속부서코드",
+      "PSTN_CD": "직급코드",
+      "DUTY_CD": "직책코드",
+      "JOB_CD": "직무코드",
+      "HIRE_DT": "입사일자",
+      "RETIRE_DT": "퇴직일자",
+      "EMP_STS_CD": "재직상태코드 (ACT=재직, LOA=휴직, RET=퇴직)",
+      "BIRTH_DT": "생년월일",
+      "GNDR_CD": "성별코드 (M/F)",
+      "EMAIL_ADDR": "이메일주소"
+    }
+  },
+  "TB_DEPT_INFO": {
+    "description": "부서정보 — 부서코드, 부서명, 상위부서, 부서레벨",
+    "columns": {
+      "DEPT_CD": "부서코드",
+      "DEPT_NM": "부서명",
+      "UP_DEPT_CD": "상위부서코드",
+      "DEPT_LVL": "부서레벨 (1:본부, 2:팀, 3:파트)",
+      "DEPT_HEAD_EMP_NO": "부서장사원번호",
+      "USE_YN": "사용여부"
+    }
+  },
+  "TB_PSTN_MST": {
+    "description": "직급 마스터 — 직급코드, 직급명, 레벨, 기본급비율",
+    "columns": {
+      "PSTN_CD": "직급코드",
+      "PSTN_NM": "직급명 (사원/대리/과장/차장/부장/이사/상무)",
+      "PSTN_LVL": "직급레벨 (1:임원~5:사원, 낮을수록 높은 직급)",
+      "BASE_SAL_RATE": "기본급비율"
+    }
+  },
+  "TB_SAL_MST": {
+    "description": "급여 마스터 — 월별 급여 지급 내역",
+    "columns": {
+      "EMP_NO": "사원번호",
+      "SAL_YM": "급여년월 (YYYYMM)",
+      "BASE_SAL": "기본급",
+      "PSTN_ALW": "직급수당",
+      "OVTM_ALW": "시간외수당",
+      "TOT_PAY": "총지급액"
+    }
+  },
+  "TB_ATTND_DLY": {
+    "description": "일별 출퇴근 기록 — 출퇴근시각, 근무시간, 지각/결근 여부",
+    "columns": {
+      "EMP_NO": "사원번호",
+      "WORK_DT": "근무일자",
+      "CHK_IN_DTM": "출근시각",
+      "CHK_OUT_DTM": "퇴근시각",
+      "WORK_HRS": "근무시간",
+      "OVTM_HRS": "시간외근무시간",
+      "LATE_YN": "지각여부 (Y/N)",
+      "ABSNT_YN": "결근여부 (Y/N)"
+    }
+  },
+  "TB_LEAVE_APPL": {
+    "description": "휴가 신청 — 휴가유형, 기간, 승인상태",
+    "columns": {
+      "LEAVE_APPL_NO": "휴가신청번호",
+      "EMP_NO": "사원번호",
+      "LEAVE_TP_CD": "휴가유형코드",
+      "LEAVE_START_DT": "휴가시작일",
+      "LEAVE_END_DT": "휴가종료일",
+      "LEAVE_DAYS": "휴가일수",
+      "APPR_STS_CD": "승인상태코드"
+    }
+  },
+  "TB_EVAL_RST": {
+    "description": "인사평가 결과 — 평가점수, 등급",
+    "columns": {
+      "EVAL_PLAN_NO": "평가계획번호",
+      "EMP_NO": "피평가자사원번호",
+      "EVALR_EMP_NO": "평가자사원번호",
+      "TOT_SCR": "총점",
+      "EVAL_GRD": "평가등급 (S/A/B/C/D)",
+      "FINAL_GRD": "최종등급"
+    }
+  },
+  "TB_PRSN_CHG": {
+    "description": "인사발령 — 승진, 전보, 휴직 등 인사이동 이력",
+    "columns": {
+      "CHG_NO": "발령번호",
+      "EMP_NO": "사원번호",
+      "CHG_DT": "발령일자",
+      "CHG_TP_CD": "발령유형코드 (PROMO=승진, TRANS=전보, LOA=휴직, RTRN=복직)",
+      "BEF_DEPT_CD": "이전부서코드",
+      "AFT_DEPT_CD": "이후부서코드",
+      "BEF_PSTN_CD": "이전직급코드",
+      "AFT_PSTN_CD": "이후직급코드"
+    }
+  }
+}

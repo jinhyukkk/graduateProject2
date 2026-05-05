@@ -8,7 +8,14 @@ __pycache__/
 .env
 
 # Data & outputs
-data/
+data/*
+!data/raw/
+data/raw/*
+!data/raw/hrdb/
+# HRDB(합성) 산출물만 추적. BIRD는 공식 배포처에서 받는 공개 벤치마크라 제외.
+# SQLite WAL 런타임 파일은 추적하지 않는다.
+data/raw/hrdb/*.sqlite-shm
+data/raw/hrdb/*.sqlite-wal
 outputs/
 
 # Node

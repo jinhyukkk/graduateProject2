@@ -1,0 +1,2045 @@
+[
+  {
+    "id": "hrdb_ext_000",
+    "question": "2026년 3월 기준으로 시간외 근무 시간이 가장 많은 직원의 이름과 근무 시간을 알려줘",
+    "SQL": "SELECT h.NAME, t.REWARD_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY t.REWARD_OVER_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블 기본 조건 필터링 및 ORDER BY 활용"
+  },
+  {
+    "id": "hrdb_ext_001",
+    "question": "2026년 3월에 야간 근무를 한 전체 직원 수를 알려줘",
+    "SQL": "SELECT COUNT(*) AS night_work_count FROM TTIM413 WHERE YM = '202603' AND REWARD_NIGHT_TIME > 0",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블 필터링 및 COUNT 집계"
+  },
+  {
+    "id": "hrdb_ext_002",
+    "question": "2026년 3월 기준으로 휴일 근무 시간이 가장 긴 직원의 이름과 소속 부서를 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.MONTH_HOL_WORK_BASE_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 p ON h.SABUN = p.SABUN JOIN TORG101 o ON p.ORG_CD = o.ORG_CD WHERE t.YM = '202603' ORDER BY t.MONTH_HOL_WORK_BASE_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "다중 테이블 JOIN과 특정 필드 기준 정렬 및 LIMIT 적용"
+  },
+  {
+    "id": "hrdb_ext_003",
+    "question": "2026년에 생성된 휴가 일수가 20일 이상인 직원의 이름과 생성 일수를 보여줘",
+    "SQL": "SELECT h.NAME, t.CRE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.CRE_CNT >= 20",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블 조건 필터링 및 특정 컬럼 값 확인"
+  },
+  {
+    "id": "hrdb_ext_004",
+    "question": "2026년 3월에 계획된 월 근무 시간이 160시간 이상인 직원들의 이름과 실 근무 시간을 보여줘",
+    "SQL": "SELECT h.NAME, t.MONTH_ACTUAL_WORK_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' AND t.MONTH_PLAN_WORK_TIME >= 160",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 특정 조건 필터링 및 JOIN"
+  },
+  {
+    "id": "hrdb_ext_005",
+    "question": "2026년 3월 기준으로 초과 근무 시간의 총합을 구해줘",
+    "SQL": "SELECT SUM(REWARD_OVER_TIME) AS total_overtime FROM TTIM413 WHERE YM = '202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블 SUM 집계 계산"
+  },
+  {
+    "id": "hrdb_ext_006",
+    "question": "2026년에 사용된 휴가 일수가 15일 이상인 직원들의 이름과 남은 휴가 일수를 보여줘",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USE_CNT >= 15",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블 필터링과 특정 필드의 조건 확인"
+  },
+  {
+    "id": "hrdb_ext_007",
+    "question": "2026년 3월 기준 재직 중인 직원들의 평균 시간외 근무 시간을 구해줘",
+    "SQL": "SELECT AVG(t.REWARD_OVER_TIME) AS avg_overtime FROM TTIM413 t JOIN THRM151 p ON t.SABUN = p.SABUN WHERE t.YM = '202603' AND p.STATUS_CD = 'S10' AND p.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "JOIN 및 조건 필터링 후 AVG 계산"
+  },
+  {
+    "id": "hrdb_ext_008",
+    "question": "2026년 3월 기준으로 직원별 시간외 근무 시간과 야간 근무 시간을 보여줘",
+    "SQL": "SELECT t.SABUN, h.NAME, t.REWARD_OVER_TIME, t.REWARD_NIGHT_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 특정 월의 시간외 및 야간 근무 시간 필드 조회"
+  },
+  {
+    "id": "hrdb_ext_009",
+    "question": "2026년 3월 기준 휴일 근무 시간이 5시간 이상인 직원 수를 알려줘",
+    "SQL": "SELECT COUNT(*) AS emp_cnt FROM TTIM413 WHERE YM = '202603' AND MONTH_HOL_WORK_BASE_TIME >= 5",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 특정 조건 기반 집계"
+  },
+  {
+    "id": "hrdb_ext_010",
+    "question": "2026년 3월 기준으로 직원별 야간 근무 시간을 내림차순 정렬해 보여줘",
+    "SQL": "SELECT t.SABUN, h.NAME, t.REWARD_NIGHT_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY t.REWARD_NIGHT_TIME DESC",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 특정 컬럼 기반 정렬과 JOIN"
+  },
+  {
+    "id": "hrdb_ext_011",
+    "question": "2026년 3월에 휴일 초과 근무 시간이 가장 많은 직원의 이름과 시간을 알려줘",
+    "SQL": "SELECT t.SABUN, h.NAME, t.REWARD_HOL_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY t.REWARD_HOL_OVER_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 최대값 필터링 및 기본 정보 JOIN"
+  },
+  {
+    "id": "hrdb_ext_012",
+    "question": "2026년 3월 기준으로 모든 직원의 총 초과 근무 시간의 합계를 보여줘",
+    "SQL": "SELECT SUM(REWARD_OVER_TIME + REWARD_HOL_OVER_TIME) AS total_over_time FROM TTIM413 WHERE YM = '202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 계산된 값의 합계 집계"
+  },
+  {
+    "id": "hrdb_ext_013",
+    "question": "2026년 3월 기준으로 초과 근무 시간이 5시간 이상인 남성 직원의 명단을 보여줘",
+    "SQL": "SELECT t.SABUN, h.NAME, t.REWARD_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' AND t.REWARD_OVER_TIME >= 5 AND h.SEX_TYPE = 'M'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 특정 조건 필터링과 성별 조건 추가"
+  },
+  {
+    "id": "hrdb_ext_014",
+    "question": "2026년 3월 기준 야간 근무 시간의 평균을 구해줘",
+    "SQL": "SELECT AVG(REWARD_NIGHT_TIME) AS avg_night_time FROM TTIM413 WHERE YM = '202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "근태 관리자",
+    "rationale": "단일 테이블에서 특정 컬럼의 평균값 계산"
+  },
+  {
+    "id": "hrdb_ext_015",
+    "question": "2026년 3월에 지급된 총 급여액은 얼마인가?",
+    "SQL": "SELECT SUM(TOT_EARNING_MON) AS total_salary FROM TCPN303 WHERE PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "단일 테이블에서 특정 월(PAY_ACTION_CD)에 대한 집계(SUM) 쿼리"
+  },
+  {
+    "id": "hrdb_ext_016",
+    "question": "2026년 3월 비과세 금액 총합은 얼마인가?",
+    "SQL": "SELECT SUM(NOTAX_TOT_MON) AS total_non_taxable FROM TCPN303 WHERE PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "단일 테이블에서 특정 월(PAY_ACTION_CD) 기준 비과세 총합 계산"
+  },
+  {
+    "id": "hrdb_ext_017",
+    "question": "2026년 3월에 가장 많은 급여를 받은 직원의 이름과 금액을 알려줘.",
+    "SQL": "SELECT NAME, MAX(TOT_EARNING_MON) AS highest_salary FROM TCPN303 WHERE PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "단일 테이블에서 특정 월(PAY_ACTION_CD) 기준 MAX 값과 해당 직원 정보 추출"
+  },
+  {
+    "id": "hrdb_ext_018",
+    "question": "2026년 3월 남성 직원의 총 급여액은 얼마인가?",
+    "SQL": "SELECT SUM(c.TOT_EARNING_MON) AS total_male_salary FROM TCPN303 c JOIN THRM100 h ON c.SABUN = h.SABUN WHERE c.PAY_ACTION_CD = 'P202603' AND h.SEX_TYPE = 'M'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "단일 테이블과 JOIN으로 성별 조건을 적용한 급여 총합 계산"
+  },
+  {
+    "id": "hrdb_ext_019",
+    "question": "2026년 3월 팀장 직책(T03)을 가진 직원들의 총 비과세 금액은 얼마인가?",
+    "SQL": "SELECT SUM(c.NOTAX_TOT_MON) AS total_non_taxable_team_leader FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' AND t.JIKCHAK_CD = 'T03'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "JOIN을 활용해 직책(JIKCHAK_CD) 필터링 후 비과세 총합 계산"
+  },
+  {
+    "id": "hrdb_ext_020",
+    "question": "2026년 3월 경영지원본부 직원들의 총 지급액은 얼마인가?",
+    "SQL": "SELECT SUM(c.TOT_EARNING_MON) AS total_salary_management FROM TCPN303 c JOIN TORG101 o ON c.ORG_CD = o.ORG_CD WHERE c.PAY_ACTION_CD = 'P202603' AND o.ORG_NM = '경영지원본부'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "조인을 통해 부서 명칭으로 필터링하며 급여 총합 계산"
+  },
+  {
+    "id": "hrdb_ext_021",
+    "question": "2026년 3월 인사팀 직원들의 비과세 금액 평균은 얼마인가?",
+    "SQL": "SELECT AVG(c.NOTAX_TOT_MON) AS avg_non_taxable_hr_team FROM TCPN303 c JOIN TORG101 o ON c.ORG_CD = o.ORG_CD WHERE c.PAY_ACTION_CD = 'P202603' AND o.ORG_NM = '인사팀'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "조인을 통해 특정 부서의 비과세 금액 평균 계산"
+  },
+  {
+    "id": "hrdb_ext_022",
+    "question": "2026년 3월에 지급된 금액 중 세금 공제 금액 총합은 얼마인가?",
+    "SQL": "SELECT SUM(c.TOT_DED_MON) AS total_tax_deductions FROM TCPN303 c WHERE c.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "단일 테이블에서 세금 공제 금액(TOT_DED_MON) 총합 계산"
+  },
+  {
+    "id": "hrdb_ext_023",
+    "question": "2026년 3월 직원별 실수령액(총 지급액 - 공제액)을 보여줘.",
+    "SQL": "SELECT c.NAME, (c.TOT_EARNING_MON - c.TOT_DED_MON) AS net_salary FROM TCPN303 c WHERE c.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "단순 계산(총 지급액에서 공제액 차감)으로 실수령액 계산"
+  },
+  {
+    "id": "hrdb_ext_024",
+    "question": "2026년 3월에 지급된 금액과 공제액을 직급별로 그룹화해서 보여줘.",
+    "SQL": "SELECT t.JIKGUB_NM, SUM(c.TOT_EARNING_MON) AS total_earning, SUM(c.TOT_DED_MON) AS total_deductions FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' GROUP BY t.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "집계함수와 GROUP BY를 활용한 직급별 급여/공제 데이터 요약"
+  },
+  {
+    "id": "hrdb_ext_025",
+    "question": "2026년 3월 기준으로 월급이 가장 높은 직원의 이름과 월 총지급액을 알려줘",
+    "SQL": "SELECT t.NAME, c.TOT_EARNING_MON FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' ORDER BY c.TOT_EARNING_MON DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "특정 월 기준으로 최대 값 필터링"
+  },
+  {
+    "id": "hrdb_ext_026",
+    "question": "2026년 3월에 지급된 월 총지급액 합계를 계산해줘",
+    "SQL": "SELECT SUM(TOT_EARNING_MON) AS total_salary FROM TCPN303 WHERE PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "월별 총지급액 합계 계산"
+  },
+  {
+    "id": "hrdb_ext_027",
+    "question": "2026년 3월에 비과세 금액이 포함된 직원들의 이름과 비과세 총액을 보여줘",
+    "SQL": "SELECT t.NAME, c.NOTAX_TOT_MON FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' AND c.NOTAX_TOT_MON > 0",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "비과세 금액 필터링"
+  },
+  {
+    "id": "hrdb_ext_028",
+    "question": "2026년 3월 기준으로 각 부서별 월 총지급액 합계를 알려줘",
+    "SQL": "SELECT o.ORG_NM, SUM(c.TOT_EARNING_MON) AS total_salary FROM TCPN303 c JOIN TORG101 o ON c.ORG_CD = o.ORG_CD WHERE c.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "부서별로 그룹화 후 합계 계산"
+  },
+  {
+    "id": "hrdb_ext_029",
+    "question": "2026년 3월 기준으로 실수령액이 500만 원 이상인 직원들의 이름과 실수령액을 보여줘",
+    "SQL": "SELECT t.NAME, c.PAYMENT_MON FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' AND c.PAYMENT_MON >= 5000000",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "특정 조건(실수령액) 필터링"
+  },
+  {
+    "id": "hrdb_ext_030",
+    "question": "2026년 3월 기준으로 세금이 가장 많이 공제된 직원의 이름과 공제된 세금 총액을 알려줘",
+    "SQL": "SELECT t.NAME, c.TOT_DED_MON FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' ORDER BY c.TOT_DED_MON DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "최대 공제 금액 필터링"
+  },
+  {
+    "id": "hrdb_ext_031",
+    "question": "2026년 3월 기준으로 각 직급별 월 총지급액 평균을 계산해줘",
+    "SQL": "SELECT t.JIKGUB_NM, AVG(c.TOT_EARNING_MON) AS avg_salary FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' GROUP BY t.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "직급별로 그룹화 후 평균 계산"
+  },
+  {
+    "id": "hrdb_ext_032",
+    "question": "2026년 3월 기준으로 모든 직원의 월 총지급액, 실수령액, 공제액을 보여줘",
+    "SQL": "SELECT t.NAME, c.TOT_EARNING_MON, c.PAYMENT_MON, c.TOT_DED_MON FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "여러 컬럼 선택 및 조건 필터링"
+  },
+  {
+    "id": "hrdb_ext_033",
+    "question": "2026년 3월 기준으로 비과세 금액과 총지급액의 비율이 가장 높은 직원의 이름과 그 비율을 계산해줘",
+    "SQL": "SELECT t.NAME, (c.NOTAX_TOT_MON * 1.0 / c.TOT_EARNING_MON) AS notax_ratio FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' ORDER BY notax_ratio DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "급여 담당자",
+    "rationale": "계산된 컬럼으로 비율 계산 및 정렬"
+  },
+  {
+    "id": "hrdb_ext_034",
+    "question": "재직 중인 남성 직원 수를 알려줘",
+    "SQL": "SELECT COUNT(*) AS male_cnt FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE h.SEX_TYPE = 'M' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "특정 조건(성별, 재직 여부)을 활용한 필터링 집계"
+  },
+  {
+    "id": "hrdb_ext_035",
+    "question": "각 부서별 직원 수를 확인할 수 있을까?",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS emp_count FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "그룹화와 집계(SQL의 GROUP BY 및 COUNT 사용) 패턴 검증"
+  },
+  {
+    "id": "hrdb_ext_036",
+    "question": "현재 '부장' 직급을 가진 직원들 명단을 알려줘",
+    "SQL": "SELECT h.NAME, t.JIKGUB_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.JIKGUB_NM = '부장' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "특정 직급 조건 필터링 및 조인 패턴 확인"
+  },
+  {
+    "id": "hrdb_ext_037",
+    "question": "현재 재직 중인 직원들의 평균 근속 연수를 구해주세요",
+    "SQL": "SELECT AVG(h.CAREER_YY_CNT) AS avg_career_years FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "평균값 계산(SQL의 AVG 함수 활용) 패턴 검증"
+  },
+  {
+    "id": "hrdb_ext_038",
+    "question": "인사팀에서 근무 중인 직원들의 이름과 직책을 볼 수 있을까요?",
+    "SQL": "SELECT h.NAME, t.JIKCHAK_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "특정 부서 필터링과 직책 정보 조회(SQL의 조인 활용) 검증"
+  },
+  {
+    "id": "hrdb_ext_039",
+    "question": "현재 재직 중인 직원들의 직급별 인원 분포를 알고 싶어요",
+    "SQL": "SELECT t.JIKGUB_NM, COUNT(*) AS count_per_jikgub FROM THRM151 t WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY t.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "직급별 그룹화 및 집계(SQL의 GROUP BY와 COUNT) 패턴 검증"
+  },
+  {
+    "id": "hrdb_ext_040",
+    "question": "2026년까지 입사한 직원 중에서 현재 '팀원' 직책을 가진 직원들의 명단을 보여줘",
+    "SQL": "SELECT h.NAME, h.EMP_YMD FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.JIKCHAK_NM = '팀원' AND h.EMP_YMD <= '20261231' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "특정 직책/입사일 조건 필터링 및 조인 패턴 확인"
+  },
+  {
+    "id": "hrdb_ext_041",
+    "question": "현재 재직 중인 직원들의 신장 평균값을 알고 싶습니다",
+    "SQL": "SELECT AVG(h.HT) AS avg_height FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "통계적 평균 계산(SQL의 AVG 함수) 패턴 검증"
+  },
+  {
+    "id": "hrdb_ext_042",
+    "question": "2026년 3월 기준 가장 높은 급여를 받는 직원의 이름과 급여를 알려줘",
+    "SQL": "SELECT h.NAME, t.TOT_EARNING_MON FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.PAY_ACTION_CD = 'P202603' ORDER BY t.TOT_EARNING_MON DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "최댓값 구하기와 단순 조인을 검증"
+  },
+  {
+    "id": "hrdb_ext_043",
+    "question": "재직 중인 남성 직원의 명단과 그들의 직급을 보여줘",
+    "SQL": "SELECT h.NAME, t.JIKGUB_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE h.SEX_TYPE = 'M' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "필터 조건과 조인을 검증"
+  },
+  {
+    "id": "hrdb_ext_044",
+    "question": "2026년 연간 지급된 연차 생성량과 사용량을 직원별로 보여줘",
+    "SQL": "SELECT h.NAME, t.CRE_CNT, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "단일 테이블에서 데이터 필터링과 조인을 검증"
+  },
+  {
+    "id": "hrdb_ext_045",
+    "question": "인사팀에 소속된 직원들의 이름과 직책을 알려줘",
+    "SQL": "SELECT h.NAME, t.JIKCHAK_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "부서명을 기준으로 조인과 필터링을 검증"
+  },
+  {
+    "id": "hrdb_ext_046",
+    "question": "2026년 3월 기준 총 급여의 합계를 알려줘",
+    "SQL": "SELECT SUM(t.TOT_EARNING_MON) AS total_salary FROM TCPN303 t WHERE t.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "집계 함수와 필터 조건을 검증"
+  },
+  {
+    "id": "hrdb_ext_047",
+    "question": "2026년 3월 기준 직원별로 초과근무 시간을 보여줘",
+    "SQL": "SELECT h.NAME, t.REWARD_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "직원별 시간 데이터를 필터링하고 조인을 검증"
+  },
+  {
+    "id": "hrdb_ext_048",
+    "question": "2026년 현재 각 부서별 직원 수를 알려줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS emp_cnt FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "부서별 그룹화와 집계를 검증"
+  },
+  {
+    "id": "hrdb_ext_049",
+    "question": "2026년 현재 부장 직급을 가진 직원들의 이름과 소속 부서를 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '부장' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 기획자",
+    "rationale": "직급 필터링과 조인 결과를 검증"
+  },
+  {
+    "id": "hrdb_ext_050",
+    "question": "현재 재직 중인 직원들의 이름과 소속 부서를 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL ORDER BY h.NAME",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "재직 상태 필터와 부서 조인을 통해 명단을 조회"
+  },
+  {
+    "id": "hrdb_ext_051",
+    "question": "사원 직급을 가진 직원들의 명단을 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '사원' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "특정 직급 필터를 적용해 명단 조회"
+  },
+  {
+    "id": "hrdb_ext_052",
+    "question": "2026년 3월 급여가 500만원 이상인 직원들의 이름과 총 급여를 알려줘",
+    "SQL": "SELECT h.NAME, t.TOT_EARNING_MON FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.TOT_EARNING_MON >= 5000000 AND t.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "급여 조건 필터로 특정 직원 식별 및 조회"
+  },
+  {
+    "id": "hrdb_ext_053",
+    "question": "여성 직원 중 2026년 생성된 연차가 20일 이상인 직원들의 이름을 보여줘",
+    "SQL": "SELECT h.NAME FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE h.SEX_TYPE = 'F' AND t.CRE_CNT >= 20 AND t.YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "성별 조건과 연차 조건을 결합해 명단 조회"
+  },
+  {
+    "id": "hrdb_ext_054",
+    "question": "현재 팀원 직책을 가진 직원들의 이름과 소속 부서를 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKCHAK_NM = '팀원' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "특정 직책 필터를 적용한 명단 조회"
+  },
+  {
+    "id": "hrdb_ext_055",
+    "question": "2026년 3월에 초과근무 시간을 가진 직원들의 이름과 총 초과근무 시간을 보여줘",
+    "SQL": "SELECT h.NAME, t.REWARD_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' AND t.REWARD_OVER_TIME > 0",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "초과근무 데이터를 시간 조건과 결합해 조회"
+  },
+  {
+    "id": "hrdb_ext_056",
+    "question": "재직 중인 직원들의 평균 경력을 연/월 단위로 계산해줘",
+    "SQL": "SELECT AVG(h.CAREER_YY_CNT) AS avg_years, AVG(h.CAREER_MM_CNT) AS avg_months FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "재직 상태 조건과 평균 계산을 결합해 통계 생성"
+  },
+  {
+    "id": "hrdb_ext_057",
+    "question": "인사팀에 소속된 직원들의 이름, 직급, 직책을 보여줘",
+    "SQL": "SELECT h.NAME, t.JIKGUB_NM, t.JIKCHAK_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "특정 부서 소속 직원 정보를 다양한 속성과 함께 조회"
+  },
+  {
+    "id": "hrdb_ext_058",
+    "question": "2026년에 연차를 모두 사용한 직원들의 이름과 사용한 연차 일수를 보여줘",
+    "SQL": "SELECT h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USE_CNT = t.CRE_CNT",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "특정 연도 내 연차 사용 현황을 조건 필터로 조회"
+  },
+  {
+    "id": "hrdb_ext_059",
+    "question": "재직 중인 직원들의 이름과 입사일을 보여줘",
+    "SQL": "SELECT h.NAME, h.EMP_YMD FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL ORDER BY h.EMP_YMD",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "재직 중 조건 필터와 단순 SELECT 및 정렬 패턴"
+  },
+  {
+    "id": "hrdb_ext_060",
+    "question": "현재 인사팀 소속 직원의 이름과 직책을 알려줘",
+    "SQL": "SELECT h.NAME, t.JIKCHAK_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "부서명으로 직원과 직책을 조회하는 다중 조인 패턴"
+  },
+  {
+    "id": "hrdb_ext_061",
+    "question": "2026년 3월 기준 총 급여가 500만 원 이상인 직원들의 이름과 소속 부서를 보여줘",
+    "SQL": "SELECT c.NAME, t.ORG_NM FROM TCPN303 c JOIN TORG101 t ON c.ORG_CD = t.ORG_CD WHERE c.TOT_EARNING_MON >= 5000000 AND c.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "급여 조건 필터와 부서 정보를 연결하는 조인 패턴"
+  },
+  {
+    "id": "hrdb_ext_062",
+    "question": "현재 근속연수가 5년 이상인 직원들의 이름과 입사일을 알려줘",
+    "SQL": "SELECT h.NAME, h.EMP_YMD FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE (CAST(strftime('%Y', 'now') AS INTEGER) - CAST(substr(h.EMP_YMD, 1, 4) AS INTEGER)) >= 5 AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "근속연수 계산과 조건 필터를 결합한 패턴"
+  },
+  {
+    "id": "hrdb_ext_063",
+    "question": "2026년에 생성된 연차가 20개 이상인 직원들의 이름과 남은 연차 개수를 알려줘",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.CRE_CNT >= 20",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "연차 생성 수량 조건 필터 및 직원 정보 연결 패턴"
+  },
+  {
+    "id": "hrdb_ext_064",
+    "question": "직책이 팀원인 직원들의 이름과 소속 부서를 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKCHAK_NM = '팀원' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "인사 운영자",
+    "rationale": "직책 조건 필터와 부서 정보 조인을 결합한 패턴"
+  },
+  {
+    "id": "hrdb_ext_065",
+    "question": "2026년에 생성된 연차 개수는 몇 개인가?",
+    "SQL": "SELECT SUM(CRE_CNT) AS total_created_leave FROM TTIM511 WHERE YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "단일 테이블에서 특정 연도의 데이터 합계를 계산하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_066",
+    "question": "2026년에 남은 연차가 가장 많은 직원의 이름과 잔여 연차를 알려줘.",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' ORDER BY t.REST_CNT DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "JOIN 후 특정 조건에 따라 정렬하고 상위 값을 추출하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_067",
+    "question": "인사팀에서 사용된 연차 총 개수를 알려줘.",
+    "SQL": "SELECT SUM(t.USE_CNT) AS total_used_leave FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "부서명을 기준으로 JOIN하여 특정 컬럼의 합계를 계산하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_068",
+    "question": "2026년 기준으로 연차를 모두 사용한 직원들의 이름과 소속 부서를 보여줘.",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON h.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YY = '2026' AND t.USE_CNT = t.CRE_CNT",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "JOIN 후 특정 조건(연차 사용률 100%) 필터링으로 데이터 추출하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_069",
+    "question": "2026년 기준 팀별 연차 사용 비율을 계산해줘.",
+    "SQL": "SELECT o.ORG_NM, ROUND(SUM(t.USE_CNT) * 100.0 / SUM(t.CRE_CNT), 2) AS usage_rate FROM TTIM511 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "그룹별 비율 계산을 통한 요약 정보 추출 패턴"
+  },
+  {
+    "id": "hrdb_ext_070",
+    "question": "2026년 연차 사용률이 가장 높은 부서를 알려줘.",
+    "SQL": "SELECT o.ORG_NM, ROUND(SUM(t.USE_CNT) * 100.0 / SUM(t.CRE_CNT), 2) AS usage_rate FROM TTIM511 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM ORDER BY usage_rate DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "그룹화 후 비율 계산 및 정렬로 최상위 데이터 추출 패턴"
+  },
+  {
+    "id": "hrdb_ext_071",
+    "question": "2026년 기준 특정 직원 '김철수'의 사용 연차와 잔여 연차를 보여줘.",
+    "SQL": "SELECT h.NAME, t.USE_CNT, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND h.NAME = '김철수'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "특정 직원에 대한 상세 데이터 필터링 및 선택 패턴"
+  },
+  {
+    "id": "hrdb_ext_072",
+    "question": "2026년에 연차가 10개 이상 남아있는 직원들의 이름과 부서를 알려줘.",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON h.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YY = '2026' AND t.REST_CNT >= 10",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "JOIN을 통해 특정 조건(잔여 연차 10 이상) 데이터를 추출하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_073",
+    "question": "2026년 연차 사용률이 80%를 넘는 부서들의 이름과 사용률을 알려줘.",
+    "SQL": "SELECT o.ORG_NM, ROUND(SUM(t.USE_CNT) * 100.0 / SUM(t.CRE_CNT), 2) AS usage_rate FROM TTIM511 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM HAVING usage_rate > 80",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "그룹화 후 조건(HAVING)을 통해 특정 상태의 데이터 필터링 패턴"
+  },
+  {
+    "id": "hrdb_ext_074",
+    "question": "2026년에 생성된 연차 개수를 알려줘",
+    "SQL": "SELECT SUM(CRE_CNT) AS total_created_cnt FROM TTIM511 WHERE YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "단일 테이블에서 특정 연도를 기준으로 합계를 계산"
+  },
+  {
+    "id": "hrdb_ext_075",
+    "question": "2026년 연차 사용 건수를 부서별로 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.USE_CNT) AS total_used_cnt FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "다중 JOIN과 GROUP BY를 사용하여 부서별 연차 사용량 집계"
+  },
+  {
+    "id": "hrdb_ext_076",
+    "question": "2026년에 연차를 모두 소진한 직원의 명단을 알려줘",
+    "SQL": "SELECT h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USE_CNT = t.CRE_CNT",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "특정 조건(USE_CNT = CRE_CNT)을 가진 데이터를 필터링"
+  },
+  {
+    "id": "hrdb_ext_077",
+    "question": "2026년 팀별 연차 사용률을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.USE_CNT) * 100.0 / SUM(t.CRE_CNT) AS usage_rate FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "GROUP BY와 계산식을 활용해 집계된 비율 계산"
+  },
+  {
+    "id": "hrdb_ext_078",
+    "question": "2026년에 남은 연차가 가장 많은 직원의 이름과 남은 개수를 알려줘",
+    "SQL": "SELECT h.NAME, MAX(t.REST_CNT) AS max_rest_cnt FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "단일 테이블에서 MAX 함수와 JOIN을 사용하여 최대 값 조회"
+  },
+  {
+    "id": "hrdb_ext_079",
+    "question": "2026년에 남은 연차가 없는 직원 수를 알려줘",
+    "SQL": "SELECT COUNT(*) AS no_leave_left_cnt FROM TTIM511 WHERE YY = '2026' AND REST_CNT = 0",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "특정 조건을 만족하는 행 개수 집계"
+  },
+  {
+    "id": "hrdb_ext_080",
+    "question": "2026년에 5개 이상의 연차를 사용한 직원 목록을 보여줘",
+    "SQL": "SELECT h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USE_CNT >= 5",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "조건부 필터링을 통해 특정 기준 이상 데이터를 조회"
+  },
+  {
+    "id": "hrdb_ext_081",
+    "question": "2026년 연차 생성 및 사용 통계를 보여줘",
+    "SQL": "SELECT SUM(CRE_CNT) AS total_created, SUM(USE_CNT) AS total_used, SUM(REST_CNT) AS total_remaining FROM TTIM511 WHERE YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "SUM 함수를 사용해 여러 열의 통계 데이터를 계산"
+  },
+  {
+    "id": "hrdb_ext_082",
+    "question": "2026년에 연차를 가장 많이 사용한 직원의 이름과 사용 개수를 알려줘",
+    "SQL": "SELECT h.NAME, MAX(t.USE_CNT) AS max_used_cnt FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "simple",
+    "persona": "휴가 관리자",
+    "rationale": "MAX 함수와 JOIN을 사용해 특정 컬럼의 최대 값과 연관된 데이터를 조회"
+  },
+  {
+    "id": "hrdb_ext_083",
+    "question": "2026년 3월에 직원들이 초과근무한 시간을 직원별로 합산해서 보여줘.",
+    "SQL": "SELECT t.SABUN, h.NAME, SUM(t.REWARD_OVER_TIME) AS total_overtime FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' GROUP BY t.SABUN, h.NAME ORDER BY total_overtime DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "직원별 시간합산을 GROUP BY와 SUM 집계로 검증"
+  },
+  {
+    "id": "hrdb_ext_084",
+    "question": "2026년 3월 야간 근무를 가장 많이 한 직원의 이름과 근무 시간을 알려줘.",
+    "SQL": "SELECT t.SABUN, h.NAME, t.REWARD_NIGHT_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY t.REWARD_NIGHT_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "야간 근무 시간 기준으로 정렬 후 상위 데이터를 LIMIT로 검증"
+  },
+  {
+    "id": "hrdb_ext_085",
+    "question": "부서별 2026년 3월 총 초과근무 시간을 계산해줘.",
+    "SQL": "SELECT o.ORG_NM, SUM(t.REWARD_OVER_TIME) AS total_overtime FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' GROUP BY o.ORG_NM ORDER BY total_overtime DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "부서별 집계를 위해 부서 테이블과 JOIN 및 GROUP BY 사용"
+  },
+  {
+    "id": "hrdb_ext_086",
+    "question": "2026년 3월 기준으로 재직 중인 직원들의 총 실제 근무 시간을 계산하고, 평균값도 함께 보여줘.",
+    "SQL": "SELECT SUM(t.MONTH_ACTUAL_WORK_TIME) AS total_actual_time, AVG(t.MONTH_ACTUAL_WORK_TIME) AS avg_actual_time FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN WHERE t.YM = '202603' AND m.STATUS_CD = 'S10' AND m.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "총합과 평균 계산을 위해 집계 함수 SUM과 AVG를 조합"
+  },
+  {
+    "id": "hrdb_ext_087",
+    "question": "2026년 3월 기준으로 부서별 평균 야간 근무 시간을 계산해줘.",
+    "SQL": "SELECT o.ORG_NM, AVG(t.REWARD_NIGHT_TIME) AS avg_night_time FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' GROUP BY o.ORG_NM ORDER BY avg_night_time DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "부서별 평균값 계산을 위해 GROUP BY와 AVG 함수 사용"
+  },
+  {
+    "id": "hrdb_ext_088",
+    "question": "2026년 3월 기준으로 초과근무 시간을 포함한 총 근무 시간이 가장 많은 직원의 이름과 소속 부서를 알려줘.",
+    "SQL": "SELECT h.NAME, o.ORG_NM, (t.MONTH_ACTUAL_WORK_TIME + t.REWARD_OVER_TIME) AS total_work_time FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' ORDER BY total_work_time DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "합산 열을 계산하며 정렬 후 상위 데이터를 LIMIT로 검증"
+  },
+  {
+    "id": "hrdb_ext_089",
+    "question": "2026년 3월 시간외 근무 시간이 가장 많은 직원의 이름과 시간을 알려줘",
+    "SQL": "SELECT h.NAME, t.REWARD_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY t.REWARD_OVER_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "특정 월 기준 시간외 근무 시간 최대값을 구하고, 정렬 및 LIMIT 사용 패턴"
+  },
+  {
+    "id": "hrdb_ext_090",
+    "question": "2026년 3월 야간 근무 시간을 직원별로 합산하여 보여줘",
+    "SQL": "SELECT h.NAME, SUM(t.REWARD_NIGHT_TIME) AS total_night_time FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' GROUP BY h.NAME ORDER BY total_night_time DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "특정 월 기준으로 직원별 야간 근무 시간 합산 및 GROUP BY 사용 패턴"
+  },
+  {
+    "id": "hrdb_ext_091",
+    "question": "2026년에 제공된 연차 휴가가 소진된 직원들의 이름과 소속 부서를 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON h.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YY = '2026' AND t.USE_CNT = t.CRE_CNT AND m.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "연차 소진 여부를 계산해 조건으로 필터링하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_092",
+    "question": "2026년 3월 기준, 휴일 근무를 한 직원들의 이름과 총 휴일 근무 시간을 보여줘",
+    "SQL": "SELECT h.NAME, SUM(t.MONTH_HOL_WORK_BASE_TIME + t.MONTH_HOL_WORK_OVER_TIME) AS total_holiday_time FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' GROUP BY h.NAME ORDER BY total_holiday_time DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "특정 월 기준으로 휴일 근무 시간 계산 및 합산하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_093",
+    "question": "2026년 3월 연장 근무 시간을 기준으로 팀별 총합을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.REWARD_OVER_TIME) AS total_team_overtime FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' GROUP BY o.ORG_NM ORDER BY total_team_overtime DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "팀별로 데이터를 그룹화하고 합산하여 정렬하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_094",
+    "question": "2026년 3월 기준, 직원별 총 근무 시간을 보여줘",
+    "SQL": "SELECT h.NAME, (t.MONTH_ACTUAL_WORK_TIME + t.MONTH_WORK_NIGHT_TIME + t.MONTH_HOL_WORK_BASE_TIME + t.MONTH_HOL_WORK_OVER_TIME) AS total_work_time FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY total_work_time DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "근무 시간 요소를 합산하여 총 근무 시간을 계산하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_095",
+    "question": "2026년 기준, 휴가 사용 후 남은 연차가 가장 많은 직원의 이름과 잔여 연차를 보여줘",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' ORDER BY t.REST_CNT DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "근태 관리자",
+    "rationale": "잔여 연차 기준으로 정렬하고 상위 1명을 선택하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_096",
+    "question": "2026년 3월 기준 전체 직원에게 지급된 총 급여액, 비과세 금액, 실수령액을 보여줘",
+    "SQL": "SELECT SUM(t.TOT_EARNING_MON) AS total_salary, SUM(t.NOTAX_TOT_MON) AS total_nontaxable, SUM(t.PAYMENT_MON) AS total_net_payment FROM TCPN303 t WHERE t.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "SQL 필드 합계를 계산하는 집계 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_097",
+    "question": "2026년 3월 기준 각 부서별 지급된 총 급여액을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.TOT_EARNING_MON) AS total_salary FROM TCPN303 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "부서별로 그룹화하고 특정 필드의 합계를 구하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_098",
+    "question": "2026년 3월 기준 팀장 직책을 맡은 직원들의 총 급여액을 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.TOT_EARNING_MON AS total_salary FROM TCPN303 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN THRM100 h ON m.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' AND m.JIKCHAK_NM = '팀장'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "직책 조건과 급여 정보를 조인하여 필터링하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_099",
+    "question": "2026년 3월 기준 급여에서 소득세와 건강보험료를 합산한 금액을 보여줘",
+    "SQL": "SELECT SUM(t.ITAX_MON + t.HI_MON) AS total_tax_and_insurance FROM TCPN303 t WHERE t.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "다중 필드 합산과 집계를 검증"
+  },
+  {
+    "id": "hrdb_ext_100",
+    "question": "2026년 3월 기준 여성 직원들의 평균 총 급여액을 보여줘",
+    "SQL": "SELECT AVG(t.TOT_EARNING_MON) AS avg_salary FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.PAY_ACTION_CD = 'P202603' AND h.SEX_TYPE = 'F'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "특정 조건에 따라 평균 값을 계산하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_101",
+    "question": "2026년 3월 기준 비과세 금액이 가장 높은 직원의 이름과 부서를 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.NOTAX_TOT_MON FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' ORDER BY t.NOTAX_TOT_MON DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "특정 필드를 기준으로 정렬하고 상위 값을 가져오는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_102",
+    "question": "2026년 3월 기준 각 직급별 평균 총 급여액을 보여줘",
+    "SQL": "SELECT m.JIKGUB_NM, AVG(t.TOT_EARNING_MON) AS avg_salary FROM TCPN303 t JOIN THRM151 m ON t.SABUN = m.SABUN WHERE t.PAY_ACTION_CD = 'P202603' GROUP BY m.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "직급별로 그룹화하여 평균 값을 계산하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_103",
+    "question": "2026년 3월 기준 재직 중인 직원들의 총 급여액, 비과세 금액, 실수령액을 보여줘",
+    "SQL": "SELECT SUM(t.TOT_EARNING_MON) AS total_salary, SUM(t.NOTAX_TOT_MON) AS total_nontaxable, SUM(t.PAYMENT_MON) AS total_net_payment FROM TCPN303 t JOIN THRM151 m ON t.SABUN = m.SABUN WHERE t.PAY_ACTION_CD = 'P202603' AND m.STATUS_CD = 'S10' AND m.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "재직 조건 필터링과 필드 합계를 검증"
+  },
+  {
+    "id": "hrdb_ext_104",
+    "question": "2026년 3월 기준 각 부서별 비과세 금액이 가장 높은 직원의 이름과 비과세 금액을 보여줘",
+    "SQL": "SELECT o.ORG_NM, h.NAME, MAX(t.NOTAX_TOT_MON) AS max_nontaxable FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "그룹별 최고 값을 가져오는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_105",
+    "question": "2026년 3월 기준, 초과근무 수당 지급 시간이 가장 많은 직원의 이름과 초과근무 시간, 지급 금액을 보여줘",
+    "SQL": "SELECT h.NAME, t.REWARD_OVER_TIME, t.PAY_REWARD_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY t.REWARD_OVER_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "시간 데이터와 관련된 필드 조건 정렬 및 상위 값을 추출하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_106",
+    "question": "2026년 3월 기준 재직 직원들의 월 총지급액과 비과세 금액을 부서별로 집계해줘.",
+    "SQL": "SELECT o.ORG_NM, SUM(t.TOT_EARNING_MON) AS total_payment, SUM(t.NOTAX_TOT_MON) AS total_non_taxable FROM TCPN303 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND t.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "부서별 월별 지급액 합계 및 비과세 금액을 계산하는 GROUP BY 패턴"
+  },
+  {
+    "id": "hrdb_ext_107",
+    "question": "2026년 3월 기준 월급에서 소득세를 제외한 실수령액이 500만 원 이상인 직원들의 명단을 보여줘.",
+    "SQL": "SELECT t.NAME, c.TOT_EARNING_MON, c.TOT_DED_MON, (c.TOT_EARNING_MON - c.TOT_DED_MON) AS net_income FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN JOIN THRM151 h ON t.SABUN = h.SABUN WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603' AND (c.TOT_EARNING_MON - c.TOT_DED_MON) >= 5000000",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "소득세 제외 실수령액 특정 조건을 포함한 필터링 및 계산 패턴"
+  },
+  {
+    "id": "hrdb_ext_108",
+    "question": "2026년 3월 기준 팀장 직책을 맡은 직원들의 월 총지급액과 비과세 금액을 알려줘.",
+    "SQL": "SELECT t.NAME, c.TOT_EARNING_MON, c.NOTAX_TOT_MON FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN JOIN THRM151 h ON t.SABUN = h.SABUN WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND h.JIKCHAK_NM = '팀장' AND c.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "특정 직책 필터링 후 급여와 비과세 금액 SELECT 패턴"
+  },
+  {
+    "id": "hrdb_ext_109",
+    "question": "2026년 3월에 지급된 급여 기준, 각 직급별 월 총지급액 합계를 구해줘.",
+    "SQL": "SELECT h.JIKGUB_NM, SUM(c.TOT_EARNING_MON) AS total_payment FROM TCPN303 c JOIN THRM151 h ON c.SABUN = h.SABUN WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603' GROUP BY h.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "직급별로 그룹화하여 월 지급액 합계를 구하는 GROUP BY 패턴"
+  },
+  {
+    "id": "hrdb_ext_110",
+    "question": "2026년 3월 기준, 부서별 평균 실수령액과 총 세금 차감액을 계산해줘.",
+    "SQL": "SELECT o.ORG_NM, AVG(c.TOT_EARNING_MON - c.TOT_DED_MON) AS avg_net_income, SUM(c.TOT_DED_MON) AS total_deductions FROM TCPN303 c JOIN THRM151 h ON c.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "부서별 평균 계산과 세금 총합을 구하는 조합 패턴"
+  },
+  {
+    "id": "hrdb_ext_111",
+    "question": "2026년 3월 기준, 직급별 비과세 금액이 가장 높은 직원의 목록을 보여줘.",
+    "SQL": "SELECT t.NAME, h.JIKGUB_NM, c.NOTAX_TOT_MON FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN JOIN THRM151 h ON t.SABUN = h.SABUN WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603' AND c.NOTAX_TOT_MON IN (SELECT MAX(NOTAX_TOT_MON) FROM TCPN303 tc JOIN THRM151 th ON tc.SABUN = th.SABUN WHERE th.STATUS_CD = 'S10' AND th.EDATE IS NULL AND tc.PAY_ACTION_CD = 'P202603' GROUP BY th.JIKGUB_NM)",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "직급별로 최대값 조건을 포함한 서브쿼리 패턴"
+  },
+  {
+    "id": "hrdb_ext_112",
+    "question": "2026년 3월 기준, 월급에서 각 직원의 소득세 비율(%)을 계산해 보여줘.",
+    "SQL": "SELECT t.NAME, c.TOT_EARNING_MON, c.CAL_TAX_MON, (c.CAL_TAX_MON * 100.0 / c.TOT_EARNING_MON) AS tax_percentage FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN JOIN THRM151 h ON t.SABUN = h.SABUN WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "소득세 비율 계산을 포함한 SELECT 패턴"
+  },
+  {
+    "id": "hrdb_ext_113",
+    "question": "2026년 3월 기준, 여성 직원들의 월 총지급액 평균을 구해줘.",
+    "SQL": "SELECT AVG(c.TOT_EARNING_MON) AS avg_female_payment FROM TCPN303 c JOIN THRM100 t ON c.SABUN = t.SABUN JOIN THRM151 h ON t.SABUN = h.SABUN WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603' AND t.SEX_TYPE = 'F'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "성별 필터링 후 평균 값을 계산하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_114",
+    "question": "2026년 3월 기준, 부서별로 근무 인원 수와 총지급액을 알려줘.",
+    "SQL": "SELECT o.ORG_NM, COUNT(DISTINCT c.SABUN) AS employee_count, SUM(c.TOT_EARNING_MON) AS total_payment FROM TCPN303 c JOIN THRM151 h ON c.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE h.STATUS_CD = 'S10' AND h.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "급여 담당자",
+    "rationale": "부서별 인원 수와 총합 계산을 함께 수행하는 그룹화 패턴"
+  },
+  {
+    "id": "hrdb_ext_115",
+    "question": "2026년 3월 기준 재직 중인 직원들의 평균 근속 연수를 알려줘",
+    "SQL": "SELECT AVG((strftime('%Y', DATE('20260301')) - strftime('%Y', h.EMP_YMD))) AS avg_tenure_years FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "AVG를 사용하여 특정 날짜 기준 평균 근속 연수 계산"
+  },
+  {
+    "id": "hrdb_ext_116",
+    "question": "부서별 재직 중인 직원 수와 해당 부서명을 보여줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(t.SABUN) AS employee_count FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "GROUP BY와 COUNT를 활용한 부서별 집계"
+  },
+  {
+    "id": "hrdb_ext_117",
+    "question": "2026년 3월 기준 재직 중인 직원들의 직급별 인원 수를 알려줘",
+    "SQL": "SELECT t.JIKGUB_NM, COUNT(t.SABUN) AS count_by_rank FROM THRM151 t WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY t.JIKGUB_NM ORDER BY count_by_rank DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "직급별 직원 수를 GROUP BY로 집계하여 정렬"
+  },
+  {
+    "id": "hrdb_ext_118",
+    "question": "2026년 3월 기준 팀장 직책을 맡은 직원들의 이름과 소속 부서를 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKCHAK_NM = '팀장' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "특정 직책을 기준으로 재직자 필터링 및 관련 정보 조회"
+  },
+  {
+    "id": "hrdb_ext_119",
+    "question": "2026년 3월 기준 각 부서의 총 급여와 평균 급여를 계산해줘",
+    "SQL": "SELECT o.ORG_NM, SUM(c.TOT_EARNING_MON) AS total_salary, AVG(c.TOT_EARNING_MON) AS avg_salary FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "부서별로 총 급여와 평균 급여를 계산하기 위해 SUM 및 AVG 사용"
+  },
+  {
+    "id": "hrdb_ext_120",
+    "question": "2026년 기준 남성 직원과 여성 직원의 휴가 사용 평균 일수를 각각 계산해줘",
+    "SQL": "SELECT h.SEX_TYPE, AVG(t.USE_CNT) AS avg_leave_days FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' GROUP BY h.SEX_TYPE",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "성별에 따른 휴가 사용 평균 일수를 계산"
+  },
+  {
+    "id": "hrdb_ext_121",
+    "question": "2026년 3월 기준으로 각 부서별 재직 중인 직원 수를 알려줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS emp_cnt FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY emp_cnt DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "부서별 직원 수 집계를 위한 GROUP BY 패턴 검증"
+  },
+  {
+    "id": "hrdb_ext_122",
+    "question": "2026년 현재 부장 직급에 있는 직원의 이름과 소속 부서를 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '부장' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "특정 직급 필터링 및 이름/부서 정보 조회 조합 검증"
+  },
+  {
+    "id": "hrdb_ext_123",
+    "question": "2026년 3월 기준으로 여성 직원의 평균 급여를 계산해줘",
+    "SQL": "SELECT AVG(c.TOT_EARNING_MON) AS avg_salary FROM THRM100 h JOIN TCPN303 c ON h.SABUN = c.SABUN WHERE h.SEX_TYPE = 'F'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "집계 함수 AVG를 사용해 특정 성별의 급여 데이터 분석 검증"
+  },
+  {
+    "id": "hrdb_ext_124",
+    "question": "2026년 기준으로 팀장 직책을 맡고 있는 직원들의 소속 부서와 평균 근속 연수를 보고 싶어",
+    "SQL": "SELECT o.ORG_NM, AVG((2026 - CAST(SUBSTR(h.EMP_YMD, 1, 4) AS INTEGER))) AS avg_tenure FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKCHAK_NM = '팀장' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "GROUP BY와 계산 필드를 활용한 직책별 근속 연수 분석 검증"
+  },
+  {
+    "id": "hrdb_ext_125",
+    "question": "2026년 3월 현재 가장 높은 급여를 받는 직원의 이름과 직급, 소속 부서를 알려줘",
+    "SQL": "SELECT h.NAME, t.JIKGUB_NM, o.ORG_NM FROM TCPN303 c JOIN THRM100 h ON c.SABUN = h.SABUN JOIN THRM151 t ON h.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE c.TOT_EARNING_MON = (SELECT MAX(TOT_EARNING_MON) FROM TCPN303) AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "서브쿼리를 활용해 최대값 데이터를 조회하는 패턴 검증"
+  },
+  {
+    "id": "hrdb_ext_126",
+    "question": "2026년에 사용한 연차가 가장 많은 직원의 이름과 사용 연차 개수를 보여줘",
+    "SQL": "SELECT h.NAME, i.USE_CNT FROM THRM100 h JOIN TTIM511 i ON h.SABUN = i.SABUN WHERE i.YY = '2026' ORDER BY i.USE_CNT DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "ORDER BY와 LIMIT 조합을 통한 최댓값 행 조회 검증"
+  },
+  {
+    "id": "hrdb_ext_127",
+    "question": "2026년 기준으로 부서별 평균 급여와 최대 급여를 알려줘",
+    "SQL": "SELECT o.ORG_NM, AVG(c.TOT_EARNING_MON) AS avg_salary, MAX(c.TOT_EARNING_MON) AS max_salary FROM TCPN303 c JOIN TORG101 o ON c.ORG_CD = o.ORG_CD GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "GROUP BY와 다중 집계 함수 활용 검증"
+  },
+  {
+    "id": "hrdb_ext_128",
+    "question": "2026년 기준으로 전체 직원의 평균 근속 연수를 보여줘",
+    "SQL": "SELECT AVG(2026 - CAST(SUBSTR(h.EMP_YMD, 1, 4) AS INTEGER)) AS avg_tenure FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 기획자",
+    "rationale": "전체 데이터를 기준으로 계산 필드를 활용한 분석 검증"
+  },
+  {
+    "id": "hrdb_ext_129",
+    "question": "전체 직원의 이름과 부서 이름을 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL ORDER BY h.NAME",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "조인은 직원 기본 정보, 부서 정보를 합쳐서 현재 재직 중인 직원 명단을 생성하며, 부서 명칭도 같이 보여준다."
+  },
+  {
+    "id": "hrdb_ext_130",
+    "question": "직급이 '과장'인 직원들의 이름과 부서명을 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '과장' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "특정 직급 조건(JIKGUB_NM='과장')을 필터링하여, 조인으로 부서와 이름 정보를 가져온다."
+  },
+  {
+    "id": "hrdb_ext_131",
+    "question": "2026년 3월 기준으로 전체 직원의 평균 급여를 계산해줘",
+    "SQL": "SELECT AVG(c.TOT_EARNING_MON) AS avg_salary FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "급여 테이블에서 특정 월(PAY_ACTION_CD='P202603') 데이터를 선택하고, 평균을 계산한다."
+  },
+  {
+    "id": "hrdb_ext_132",
+    "question": "2026년도에 사용 가능한 연차가 15개 이상인 직원들의 이름을 보여줘",
+    "SQL": "SELECT h.NAME FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.CRE_CNT >= 15",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "연차 정보를 보유한 테이블에서 특정 연(YY='2026')과 조건(CRE_CNT>=15)을 필터링한다."
+  },
+  {
+    "id": "hrdb_ext_133",
+    "question": "인사팀에 소속된 직원들의 이름과 현재 직책을 보여줘",
+    "SQL": "SELECT h.NAME, t.JIKCHAK_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "부서명 조건(ORG_NM='인사팀')과 직책 정보를 조인으로 가져오며 현재 발령 상태를 필터링한다."
+  },
+  {
+    "id": "hrdb_ext_134",
+    "question": "2026년 3월 기준으로 팀장 직책을 맡은 직원들의 급여 명세를 보여줘",
+    "SQL": "SELECT h.NAME, c.TOT_EARNING_MON FROM TCPN303 c JOIN THRM100 h ON c.SABUN = h.SABUN JOIN THRM151 t ON c.SABUN = t.SABUN WHERE t.JIKCHAK_NM = '팀장' AND c.PAY_ACTION_CD = 'P202603' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "특정 직책(JIKCHAK_NM='팀장')과 급여 데이터를 조인으로 연결하여 급여 명세를 필터링한다."
+  },
+  {
+    "id": "hrdb_ext_135",
+    "question": "2026년 3월 기준으로 재직 중인 남성 직원들의 총 급여 합계를 계산해줘",
+    "SQL": "SELECT SUM(c.TOT_EARNING_MON) AS total_salary FROM TCPN303 c JOIN THRM100 h ON c.SABUN = h.SABUN JOIN THRM151 t ON c.SABUN = t.SABUN WHERE h.SEX_TYPE = 'M' AND c.PAY_ACTION_CD = 'P202603' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "성별 조건(SEX_TYPE='M')과 급여 데이터를 조인 및 필터링하여 총합을 계산한다."
+  },
+  {
+    "id": "hrdb_ext_136",
+    "question": "현재 재직 중인 직원들의 부서별 평균 급여를 계산해줘",
+    "SQL": "SELECT o.ORG_NM, AVG(c.TOT_EARNING_MON) AS avg_salary FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY avg_salary DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "부서별 그룹화 후 급여 평균을 계산하여 부서별 급여 통계를 제공한다."
+  },
+  {
+    "id": "hrdb_ext_137",
+    "question": "2026년 3월에 급여를 받은 직원들의 이름과 총 급여액을 알려줘",
+    "SQL": "SELECT h.NAME, c.TOT_EARNING_MON FROM TCPN303 c JOIN THRM100 h ON c.SABUN = h.SABUN WHERE c.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "특정 월 급여 데이터를 조회하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_138",
+    "question": "현재 재직 중인 직원들 중 부서별 직원 수를 보여줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS emp_count FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "부서별 그룹화 및 COUNT 집계를 검증"
+  },
+  {
+    "id": "hrdb_ext_139",
+    "question": "부장 직급을 가진 모든 직원의 이름과 소속 부서를 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '부장' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "직급 필터링과 부서 정보를 함께 조회하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_140",
+    "question": "2026년 생성된 모든 휴가의 총 개수를 구해줘",
+    "SQL": "SELECT SUM(CRE_CNT) AS total_leave_created FROM TTIM511 WHERE YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "특정 연도의 SUM 집계를 검증"
+  },
+  {
+    "id": "hrdb_ext_141",
+    "question": "현재 인사팀에 소속된 직원들의 이름과 직책을 보여줘",
+    "SQL": "SELECT h.NAME, t.JIKCHAK_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "특정 부서 소속 직원 데이터를 필터링하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_142",
+    "question": "2026년 3월에 초과근무를 한 직원들의 이름과 초과근무 시간을 보여줘",
+    "SQL": "SELECT h.NAME, t.REWARD_OVER_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' AND t.REWARD_OVER_TIME > 0",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "특정 월 초과근무 데이터를 필터링하여 조회하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_143",
+    "question": "여성 직원들 중 가장 최근에 입사한 직원의 이름과 입사일을 알려줘",
+    "SQL": "SELECT h.NAME, h.EMP_YMD FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE h.SEX_TYPE = 'F' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL ORDER BY h.EMP_YMD DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "조건을 결합하여 최신 데이터를 조회하는 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_144",
+    "question": "현재 재직 중인 직원들의 평균 근속 연수를 계산해줘",
+    "SQL": "SELECT AVG((strftime('%Y', 'now') - strftime('%Y', h.EMP_YMD))) AS avg_years_of_service FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "인사 운영자",
+    "rationale": "근속 연수를 계산하기 위한 날짜 연산 패턴을 검증"
+  },
+  {
+    "id": "hrdb_ext_145",
+    "question": "연차 총 생성 개수와 사용 개수를 직원별로 보여줘",
+    "SQL": "SELECT h.NAME, t.CRE_CNT AS total_created, t.USE_CNT AS total_used FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026'",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "개별 직원의 연차 생성과 사용 현황을 계산하는 집계 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_146",
+    "question": "각 부서별 연차 사용률(사용 개수 / 생성 개수)을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.USE_CNT) * 100.0 / SUM(t.CRE_CNT) AS usage_rate FROM TTIM511 t JOIN THRM151 th ON t.SABUN = th.SABUN JOIN TORG101 o ON th.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "부서별 그룹화와 계산 필드(사용률)를 활용하는 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_147",
+    "question": "2026년에 연차를 모두 소진한 직원 명단을 보여줘",
+    "SQL": "SELECT h.NAME, t.USE_CNT, t.CRE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USE_CNT = t.CRE_CNT",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "연차 사용량과 생성량 비교를 통해 조건 필터링하는 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_148",
+    "question": "2026년에 남은 연차 개수가 가장 많은 직원의 이름과 잔여 연차를 보여줘",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' ORDER BY t.REST_CNT DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "ORDER BY와 LIMIT을 활용한 최대값 추출 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_149",
+    "question": "2026년에 부서별 연차 잔여 개수 합계를 계산해줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.REST_CNT) AS total_remaining FROM TTIM511 t JOIN THRM151 th ON t.SABUN = th.SABUN JOIN TORG101 o ON th.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "부서별 그룹화와 잔여 연차 합계를 계산하는 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_150",
+    "question": "2026년에 연차를 가장 많이 사용한 직원의 이름과 사용 개수를 보여줘",
+    "SQL": "SELECT h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' ORDER BY t.USE_CNT DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "ORDER BY와 LIMIT을 활용한 최댓값 추출 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_151",
+    "question": "부서별로 2026년에 연차를 가장 많이 사용한 직원의 이름과 사용 개수를 보여줘",
+    "SQL": "SELECT o.ORG_NM, h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM151 th ON t.SABUN = th.SABUN JOIN TORG101 o ON th.ORG_CD = o.ORG_CD JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USE_CNT = (SELECT MAX(t2.USE_CNT) FROM TTIM511 t2 WHERE t2.YY = '2026' AND t2.SABUN = t.SABUN) GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "서브쿼리를 활용한 부서별 최댓값 추출 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_152",
+    "question": "2026년에 연차 생성 개수가 20개 이상인 직원들의 평균 연차 사용 개수를 계산해줘",
+    "SQL": "SELECT AVG(t.USE_CNT) AS avg_used FROM TTIM511 t WHERE t.YY = '2026' AND t.CRE_CNT >= 20",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "조건 필터링과 집계 함수(AVG)를 활용한 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_153",
+    "question": "2026년에 생성된 연차 중 부서별로 사용된 연차 개수를 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.USE_CNT) AS total_used FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM ORDER BY total_used DESC",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "부서별 연차 사용량 집계로 GROUP BY와 SUM 사용"
+  },
+  {
+    "id": "hrdb_ext_154",
+    "question": "부서별 2026년 연차 생성 개수와 사용 개수를 비교하여 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.CRE_CNT) AS total_created, SUM(t.USE_CNT) AS total_used FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "GROUP BY를 활용해 생성 및 사용 연차를 부서별로 비교"
+  },
+  {
+    "id": "hrdb_ext_155",
+    "question": "2026년에 개인 연차를 모두 사용한 직원의 이름과 소속 부서를 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 p ON h.SABUN = p.SABUN JOIN TORG101 o ON p.ORG_CD = o.ORG_CD WHERE t.YY = '2026' AND t.CRE_CNT = t.USE_CNT AND p.STATUS_CD = 'S10' AND p.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "조건 필터링 및 JOIN을 활용하여 특정 기준의 직원 식별"
+  },
+  {
+    "id": "hrdb_ext_156",
+    "question": "2026년 기준 연차를 가장 많이 사용한 부서와 사용 개수를 알려줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.USE_CNT) AS total_used FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM ORDER BY total_used DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "부서별 집계 후 정렬과 LIMIT로 최상위 값 추출"
+  },
+  {
+    "id": "hrdb_ext_157",
+    "question": "2026년에 연차 생성 개수가 5개 이상인 직원의 이름과 생성 개수를 보여줘",
+    "SQL": "SELECT h.NAME, t.CRE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.CRE_CNT >= 5",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "조건 필터링을 통해 특정 기준을 충족하는 직원 추출"
+  },
+  {
+    "id": "hrdb_ext_158",
+    "question": "부서별 잔여 연차 평균을 2026년 기준으로 계산해 보여줘",
+    "SQL": "SELECT o.ORG_NM, AVG(t.CRE_CNT - t.USE_CNT) AS avg_remaining_leave FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "부서별로 잔여 연차 평균 계산을 위해 GROUP BY와 AVG 사용"
+  },
+  {
+    "id": "hrdb_ext_159",
+    "question": "2026년에 연차를 가장 적게 사용한 직원의 이름과 사용 개수를 보여줘",
+    "SQL": "SELECT h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' ORDER BY t.USE_CNT ASC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "ORDER BY와 LIMIT로 최소값 식별"
+  },
+  {
+    "id": "hrdb_ext_160",
+    "question": "부서별로 2026년 연차를 초과 생성한 직원 수를 계산해 보여줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(h.SABUN) AS over_created_count FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' AND t.CRE_CNT > 20 GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "medium",
+    "persona": "휴가 관리자",
+    "rationale": "조건 필터링 및 COUNT로 특정 기준 초과하는 직원 집계"
+  },
+  {
+    "id": "hrdb_ext_161",
+    "question": "2026년 3월 기준 월간 야간 근무 시간이 가장 많은 직원 상위 5명의 이름과 근무 시간을 알려줘",
+    "SQL": "SELECT h.NAME, t.MONTH_WORK_NIGHT_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' ORDER BY t.MONTH_WORK_NIGHT_TIME DESC LIMIT 5",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "서브쿼리 없이 특정 조건 기반 정렬 및 상위 데이터 제한 SQL"
+  },
+  {
+    "id": "hrdb_ext_162",
+    "question": "2026년 3월 기준 야간 근무 시간이 가장 많은 직원들의 팀별 평균 야간 근무 시간을 보여줘",
+    "SQL": "SELECT o.ORG_NM, AVG(t.MONTH_WORK_NIGHT_TIME) AS avg_night_time FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' AND m.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY avg_night_time DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "그룹화, 평균 계산 및 정렬을 조합한 데이터 분석"
+  },
+  {
+    "id": "hrdb_ext_163",
+    "question": "2026년 생성된 연차가 20일 이상인 직원들의 이름과 남은 연차 일수를 보여줘",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.CRE_CNT >= 20",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "조건 필터링과 특정 컬럼 데이터 출력"
+  },
+  {
+    "id": "hrdb_ext_164",
+    "question": "2026년 생성된 연차를 다 사용한 직원 수는 몇 명인지 알려줘",
+    "SQL": "SELECT COUNT(*) AS fully_used_annual_leave FROM TTIM511 WHERE YY = '2026' AND CRE_CNT = USED_CNT",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "조건 필터링 및 집계 데이터 계산"
+  },
+  {
+    "id": "hrdb_ext_165",
+    "question": "2026년 3월 기준 시간외 근무 시간이 가장 많은 직원의 이름과 부서를 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.MONTH_ACTUAL_WORK_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON h.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' AND m.EDATE IS NULL ORDER BY t.REWARD_OVER_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "서브쿼리 없이 다중 테이블(JOIN)과 정렬, 제한(LIMIT)을 활용한 복합 쿼리"
+  },
+  {
+    "id": "hrdb_ext_166",
+    "question": "2026년 1월부터 3월까지 야간 근무 시간이 가장 많은 3명의 이름과 직급을 알려줘",
+    "SQL": "SELECT h.NAME, m.JIKGUB_NM, SUM(t.REWARD_NIGHT_TIME) AS total_night_time FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON h.SABUN = m.SABUN WHERE t.YM BETWEEN '202601' AND '202603' AND m.EDATE IS NULL GROUP BY t.SABUN, m.JIKGUB_NM ORDER BY total_night_time DESC LIMIT 3",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "날짜 범위 조건과 집계 함수, 정렬 및 제한(LIMIT)을 활용한 쿼리"
+  },
+  {
+    "id": "hrdb_ext_167",
+    "question": "2026년 3월 기준 팀장 직책을 맡은 직원들의 총 근무 시간과 시간외 근무 시간을 부서별로 합산해줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.MONTH_ACTUAL_WORK_TIME) AS total_work_time, SUM(t.REWARD_OVER_TIME) AS total_overtime FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON h.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' AND m.JIKCHAK_NM = '팀장' AND m.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "집계(GROUP BY)와 다중 컬럼 합산(SUM), 조건 필터링을 포함한 쿼리"
+  },
+  {
+    "id": "hrdb_ext_168",
+    "question": "2026년 1분기 동안 부서별로 평균 시간외 근무 시간을 계산하고, 해당 부서명을 함께 보여줘",
+    "SQL": "SELECT o.ORG_NM, AVG(t.REWARD_OVER_TIME) AS avg_overtime FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM BETWEEN '202601' AND '202603' AND m.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "부서별 평균 계산과 그룹화(GROUP BY)를 활용한 집계 쿼리"
+  },
+  {
+    "id": "hrdb_ext_169",
+    "question": "2026년 3월 기준 재직 중인 모든 직원의 이름, 직급, 그리고 월 근무시간을 보여줘",
+    "SQL": "SELECT h.NAME, m.JIKGUB_NM, t.MONTH_ACTUAL_WORK_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 m ON h.SABUN = m.SABUN WHERE t.YM = '202603' AND m.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "다중 테이블 JOIN과 재직 조건 필터링을 포함한 쿼리"
+  },
+  {
+    "id": "hrdb_ext_170",
+    "question": "2026년 3월에 부서별로 총 근무 시간을 기준으로 상위 3개 부서를 선정하고, 해당 부서명과 총 근무 시간을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.MONTH_ACTUAL_WORK_TIME) AS total_work_time FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' AND m.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY total_work_time DESC LIMIT 3",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "근태 관리자",
+    "rationale": "부서별 합산(SUM), 그룹화, 정렬 및 상위 N 제한(LIMIT)을 포함한 쿼리"
+  },
+  {
+    "id": "hrdb_ext_171",
+    "question": "2026년 3월 기준으로 팀별 총 급여 지급액과 평균 세후 수령액을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.TOT_EARNING_MON) AS total_salary, AVG(t.PAYMENT_MON) AS avg_take_home FROM TCPN303 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "다중 테이블 JOIN 및 그룹화, 집계 함수 활용"
+  },
+  {
+    "id": "hrdb_ext_172",
+    "question": "2026년 3월 기준 모든 직원의 개인별 총지급액, 비과세 금액, 실수령액을 보여줘",
+    "SQL": "SELECT h.NAME, h.SABUN, t.TOT_EARNING_MON AS total_salary, t.NOTAX_TOT_MON AS nontaxable_amount, t.PAYMENT_MON AS take_home_salary FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "두 테이블을 JOIN하고 개별 필드의 집계 데이터를 필터링 없이 조회"
+  },
+  {
+    "id": "hrdb_ext_173",
+    "question": "2026년 3월 기준 직급별 총지급액과 평균 세후 수령액을 알려줘",
+    "SQL": "SELECT t.JIKGUB_NM, SUM(c.TOT_EARNING_MON) AS total_salary, AVG(c.PAYMENT_MON) AS avg_take_home FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN WHERE c.PAY_ACTION_CD = 'P202603' GROUP BY t.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "직급별 그룹화를 통해 집계 데이터를 계산"
+  },
+  {
+    "id": "hrdb_ext_174",
+    "question": "2026년 3월 기준 각 부서의 세금 공제 총액과 평균 공제액을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(c.TOT_DED_MON) AS total_deductions, AVG(c.TOT_DED_MON) AS avg_deductions FROM TCPN303 c JOIN TORG101 o ON c.ORG_CD = o.ORG_CD WHERE c.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "부서별 세금 공제 데이터를 그룹화하여 총액과 평균 계산"
+  },
+  {
+    "id": "hrdb_ext_175",
+    "question": "2026년 3월 기준 총지급액 대비 비과세 비율이 가장 높은 직원의 정보를 알려줘",
+    "SQL": "SELECT h.NAME, t.TOT_EARNING_MON, t.NOTAX_TOT_MON, t.PAYMENT_MON, (t.NOTAX_TOT_MON * 1.0 / t.TOT_EARNING_MON) AS nontax_ratio FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.PAY_ACTION_CD = 'P202603' ORDER BY nontax_ratio DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "비율 계산과 정렬을 결합하여 최대값을 조회"
+  },
+  {
+    "id": "hrdb_ext_176",
+    "question": "2026년 3월 기준 세후 실수령액이 500만 원 이상인 직원 수를 알려줘",
+    "SQL": "SELECT COUNT(*) AS employee_count FROM TCPN303 WHERE PAY_ACTION_CD = 'P202603' AND PAYMENT_MON >= 5000000",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "필터 조건을 만족하는 데이터의 개수를 집계"
+  },
+  {
+    "id": "hrdb_ext_177",
+    "question": "2026년 3월 기준 급여의 비과세 항목 총 금액이 가장 큰 부서는 어디야?",
+    "SQL": "SELECT o.ORG_NM, SUM(c.NOTAX_TOT_MON) AS total_nontax FROM TCPN303 c JOIN TORG101 o ON c.ORG_CD = o.ORG_CD WHERE c.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM ORDER BY total_nontax DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "부서별 데이터 그룹화 및 최대값 필터링"
+  },
+  {
+    "id": "hrdb_ext_178",
+    "question": "2026년 3월 기준 각 직원의 세금 공제 금액이 차감된 순서로 명단을 보여줘",
+    "SQL": "SELECT h.NAME, c.TOT_EARNING_MON, c.TOT_DED_MON, c.PAYMENT_MON FROM TCPN303 c JOIN THRM100 h ON c.SABUN = h.SABUN WHERE c.PAY_ACTION_CD = 'P202603' ORDER BY c.TOT_DED_MON DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "정렬 기준을 세금 공제로 설정하여 데이터를 조회"
+  },
+  {
+    "id": "hrdb_ext_179",
+    "question": "2026년 3월에 지급된 비과세 항목 금액 합계를 부서별로 보여줘.",
+    "SQL": "SELECT o.ORG_NM, SUM(t.NOTAX_TOT_MON) AS total_nontax FROM TCPN303 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM ORDER BY total_nontax DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "부서별 그룹화 및 합계 계산을 수행하는 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_180",
+    "question": "2026년 3월 기준 부서별 총급여액과 실수령액을 계산해줘.",
+    "SQL": "SELECT o.ORG_NM, SUM(t.TOT_EARNING_MON) AS total_earning, SUM(t.PAYMENT_MON) AS total_payment FROM TCPN303 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM ORDER BY total_earning DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "부서별로 그룹화하고 여러 합계를 동시에 계산"
+  },
+  {
+    "id": "hrdb_ext_181",
+    "question": "2026년 3월에 지급된 세금(TAX) 총액과 보험료(국민연금, 건강보험 등) 총액을 전체적으로 합산해줘.",
+    "SQL": "SELECT SUM(t.ITAX_MON) AS total_tax, SUM(t.EI_MON + t.NP_MON + t.HI_MON) AS total_insurance FROM TCPN303 t WHERE t.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "다중 컬럼을 합산하여 총계를 계산하는 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_182",
+    "question": "2026년 3월 기준 남성 직원과 여성 직원의 총 실수령액을 각각 계산해줘.",
+    "SQL": "SELECT h.SEX_TYPE, SUM(t.PAYMENT_MON) AS total_payment FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.PAY_ACTION_CD = 'P202603' GROUP BY h.SEX_TYPE",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "성별로 그룹화하여 급여 데이터를 분석하는 SQL 패턴"
+  },
+  {
+    "id": "hrdb_ext_183",
+    "question": "2026년 3월 기준 특정 부서(인사팀) 직원들의 비과세 금액 합계와 총 급여를 계산해줘.",
+    "SQL": "SELECT o.ORG_NM, SUM(t.NOTAX_TOT_MON) AS total_nontax, SUM(t.TOT_EARNING_MON) AS total_earning FROM TCPN303 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.PAY_ACTION_CD = 'P202603' AND o.ORG_NM = '인사팀' GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "특정 조건 필터와 다중 합계 계산을 조합한 패턴"
+  },
+  {
+    "id": "hrdb_ext_184",
+    "question": "2026년 기준 연차 사용량이 가장 많은 직원 상위 5명을 보여줘.",
+    "SQL": "SELECT h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' ORDER BY t.USE_CNT DESC LIMIT 5",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "급여 담당자",
+    "rationale": "정렬과 LIMIT를 활용해 상위 데이터를 추출하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_185",
+    "question": "2026년 기준으로 근속 연수가 10년 이상인 직원들의 이름과 근속 연수를 보여줘.",
+    "SQL": "SELECT h.NAME, ((2026 - CAST(SUBSTR(h.EMP_YMD, 1, 4) AS INTEGER))) AS TENURE_YEARS FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND (2026 - CAST(SUBSTR(h.EMP_YMD, 1, 4) AS INTEGER)) >= 10 ORDER BY TENURE_YEARS DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "날짜 계산과 조건 필터링을 통해 근속 연수 기준 필터를 수행."
+  },
+  {
+    "id": "hrdb_ext_186",
+    "question": "2026년 3월 기준으로 각 부서별 평균 급여를 보여줘.",
+    "SQL": "SELECT o.ORG_NM, AVG(c.TOT_EARNING_MON) AS AVG_SALARY FROM TCPN303 c JOIN THRM151 t ON c.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE c.PAY_ACTION_CD = 'P202603' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY AVG_SALARY DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "다중 테이블 조인과 그룹핑을 통해 부서별 집계 정보를 생성."
+  },
+  {
+    "id": "hrdb_ext_187",
+    "question": "현재 재직 중인 남성 직원들의 직급별 인원 분포를 보여줘.",
+    "SQL": "SELECT t.JIKGUB_NM, COUNT(*) AS EMP_COUNT FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE h.SEX_TYPE = 'M' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY t.JIKGUB_NM ORDER BY EMP_COUNT DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "성별 필터링과 그룹핑을 통해 직급별 인원 분포를 생성."
+  },
+  {
+    "id": "hrdb_ext_188",
+    "question": "각 부서별로 2026년 기준 가장 오래 근무한 직원의 이름과 근속 연수를 보여줘.",
+    "SQL": "SELECT o.ORG_NM, h.NAME, MAX(2026 - CAST(SUBSTR(h.EMP_YMD, 1, 4) AS INTEGER)) AS MAX_TENURE FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY MAX_TENURE DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "그룹 내 최대값 구하기와 JOIN을 조합한 복잡한 집계."
+  },
+  {
+    "id": "hrdb_ext_189",
+    "question": "2026년 기준으로 총 휴가 일수가 가장 많은 직원의 이름과 휴가 일수를 보여줘.",
+    "SQL": "SELECT h.NAME, (t.CRE_CNT - t.USED_CNT) AS REMAINING_DAYS FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' ORDER BY REMAINING_DAYS DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "휴가 데이터에서 계산된 값 기준 정렬 및 제한."
+  },
+  {
+    "id": "hrdb_ext_190",
+    "question": "2026년 기준으로 팀장 직책을 가진 직원들의 평균 근속 연수를 보여줘.",
+    "SQL": "SELECT AVG(2026 - CAST(SUBSTR(h.EMP_YMD, 1, 4) AS INTEGER)) AS AVG_TENURE FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.JIKCHAK_NM = '팀장' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "직책 필터링 후 평균 계산 수행."
+  },
+  {
+    "id": "hrdb_ext_191",
+    "question": "2026년 3월 기준, 야간 근무 시간이 가장 많은 직원의 이름과 부서명을 보여줘.",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.MONTH_WORK_NIGHT_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN THRM151 tm ON h.SABUN = tm.SABUN JOIN TORG101 o ON tm.ORG_CD = o.ORG_CD WHERE t.YM = '202603' AND tm.STATUS_CD = 'S10' AND tm.EDATE IS NULL ORDER BY t.MONTH_WORK_NIGHT_TIME DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "최대값 기준으로 정렬된 데이터에서 상위 1개 데이터 추출."
+  },
+  {
+    "id": "hrdb_ext_192",
+    "question": "부서별로 2026년 기준 재직 중인 직원 수와 평균 급여를 보여줘.",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS EMP_COUNT, AVG(c.TOT_EARNING_MON) AS AVG_SALARY FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD JOIN TCPN303 c ON t.SABUN = c.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND c.PAY_ACTION_CD = 'P202603' GROUP BY o.ORG_NM ORDER BY EMP_COUNT DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "부서별로 집계 및 평균 계산을 함께 수행하는 복잡한 쿼리."
+  },
+  {
+    "id": "hrdb_ext_193",
+    "question": "부서별로 재직 중인 직원 수와 평균 연봉을 알려줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(*) AS employee_count, AVG(c.TOT_EARNING_MON) AS avg_salary FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD JOIN TCPN303 c ON t.SABUN = c.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "GROUP BY로 부서별 집계를 수행하며, COUNT와 AVG 집계 함수를 결합하여 직원 수와 평균 연봉을 계산"
+  },
+  {
+    "id": "hrdb_ext_194",
+    "question": "2026년 3월 기준으로 팀장 직책을 맡은 직원들의 이름과 부서명을 모두 보여줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKCHAK_NM = '팀장' AND t.EDATE IS NULL AND t.SDATE <= '20260301'",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "특정 시점('2026년 3월') 기준으로 직책 필터링을 포함한 조건부 조인"
+  },
+  {
+    "id": "hrdb_ext_195",
+    "question": "2026년 3월 기준으로 각 직급별 재직 중인 직원 수를 계산해줘",
+    "SQL": "SELECT t.JIKGUB_NM, COUNT(*) AS employee_count FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND t.SDATE <= '20260301' GROUP BY t.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "직급별 집계를 위해 GROUP BY와 조건 필터링을 함께 사용"
+  },
+  {
+    "id": "hrdb_ext_196",
+    "question": "2026년 3월 현재 근무 중인 직원들의 부서별 평균 초과근무 시간을 알려줘",
+    "SQL": "SELECT o.ORG_NM, AVG(t.REWARD_OVER_TIME) AS avg_overtime FROM TTIM413 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YM = '202603' AND h.STATUS_CD = 'S10' AND h.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "초과근무 시간 데이터와 부서 정보를 조인하고, 부서별 평균값을 계산"
+  },
+  {
+    "id": "hrdb_ext_197",
+    "question": "2026년에 지급된 총 급여가 가장 높은 직원의 이름과 부서명을 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM TCPN303 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.EMP_YMD <= '20260101' AND t.TOT_EARNING_MON = (SELECT MAX(TOT_EARNING_MON) FROM TCPN303 WHERE EMP_YMD <= '20260101')",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "서브쿼리를 사용하여 특정 조건 하에서 최대값을 가진 행을 필터링"
+  },
+  {
+    "id": "hrdb_ext_198",
+    "question": "2026년 기준 가장 오래된 부서에 소속된 직원들의 이름과 입사일을 알려줘",
+    "SQL": "SELECT h.NAME, h.EMP_YMD FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.SDATE = (SELECT MIN(SDATE) FROM TORG101 WHERE SDATE <= '20260101') AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "서브쿼리로 가장 오래된 부서의 시작일을 조회 후 그 부서에 속한 직원 데이터를 조인"
+  },
+  {
+    "id": "hrdb_ext_199",
+    "question": "2026년 3월 기준, 여성 직원들의 직급별 평균 연봉과 인원수를 구해줘",
+    "SQL": "SELECT t.JIKGUB_NM, AVG(c.TOT_EARNING_MON) AS avg_salary, COUNT(*) AS employee_count FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TCPN303 c ON t.SABUN = c.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL AND h.SEX_TYPE = 'F' GROUP BY t.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "성별 필터링과 직급별 집계를 결합하여 평균 연봉 및 인원수 계산"
+  },
+  {
+    "id": "hrdb_ext_200",
+    "question": "2026년에 휴가를 모두 사용한 직원들의 이름과 사용한 휴가 일수를 알려줘",
+    "SQL": "SELECT h.NAME, t.USE_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USE_CNT = t.CRE_CNT",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 기획자",
+    "rationale": "직원의 휴가 생성 일수와 사용 일수를 비교하여 조건부 필터링"
+  },
+  {
+    "id": "hrdb_ext_201",
+    "question": "현재 부장 직급인 재직 중 직원들의 이름과 소속 조직 이름을 알려줘.",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '부장' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "직급 필터링과 다중 JOIN을 통해 재직 중인 특정 직급 직원 조회"
+  },
+  {
+    "id": "hrdb_ext_202",
+    "question": "인사팀에 현재 재직 중인 직원들의 평균 연봉을 계산해줘.",
+    "SQL": "SELECT AVG(tc.TOT_EARNING_MON * 12) AS avg_annual_salary FROM THRM151 t JOIN TCPN303 tc ON t.SABUN = tc.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE o.ORG_NM = '인사팀' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "부서 필터링과 급여 데이터 활용, 집계 연산을 통한 평균 연봉 계산"
+  },
+  {
+    "id": "hrdb_ext_203",
+    "question": "2026년 기준으로 재직 중인 직원들이 현재까지 사용한 연차 일수를 보여줘.",
+    "SQL": "SELECT h.NAME, tt.USED_CNT FROM TTIM511 tt JOIN THRM100 h ON tt.SABUN = h.SABUN JOIN THRM151 t ON tt.SABUN = t.SABUN WHERE tt.YY = '2026' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "연차 사용 조회와 재직 상태 필터링을 결합한 다중 테이블 조인"
+  },
+  {
+    "id": "hrdb_ext_204",
+    "question": "2026년 3월 기준으로 월급여가 가장 높은 직원의 이름과 금액을 알려줘.",
+    "SQL": "SELECT h.NAME, tc.TOT_EARNING_MON FROM TCPN303 tc JOIN THRM100 h ON tc.SABUN = h.SABUN WHERE tc.TOT_EARNING_MON = (SELECT MAX(TOT_EARNING_MON) FROM TCPN303 WHERE tc.PAY_ACTION_CD = 'P202603') AND tc.PAY_ACTION_CD = 'P202603'",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "서브쿼리를 사용해 최대 급여를 가진 직원 식별"
+  },
+  {
+    "id": "hrdb_ext_205",
+    "question": "각 조직별로 재직 중인 직원 수를 계산하고, 직원 수가 3명 이상인 조직만 보여줘.",
+    "SQL": "SELECT o.ORG_NM, COUNT(DISTINCT t.SABUN) AS emp_count FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM HAVING COUNT(DISTINCT t.SABUN) >= 3",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "GROUP BY와 HAVING을 사용해 조직별 집계를 필터링"
+  },
+  {
+    "id": "hrdb_ext_206",
+    "question": "2026년 3월 기준으로 여성 직원 중에서 월급여 상위 3명을 보여줘.",
+    "SQL": "SELECT h.NAME, tc.TOT_EARNING_MON FROM TCPN303 tc JOIN THRM100 h ON tc.SABUN = h.SABUN WHERE h.SEX_TYPE = 'F' AND tc.PAY_ACTION_CD = 'P202603' ORDER BY tc.TOT_EARNING_MON DESC LIMIT 3",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "성별 필터링과 정렬, 제한 조건을 조합한 복합 쿼리"
+  },
+  {
+    "id": "hrdb_ext_207",
+    "question": "현재 재직 중인 직원들의 평균 근속 연수를 부서별로 계산해줘.",
+    "SQL": "SELECT o.ORG_NM, AVG((strftime('%Y', 'now') - strftime('%Y', h.EMP_YMD))) AS avg_tenure FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "부서별 근속 연수 계산을 위한 날짜 연산과 그룹화"
+  },
+  {
+    "id": "hrdb_ext_208",
+    "question": "월별로 부서별 재직 중인 직원 수를 집계해서 알려줘",
+    "SQL": "SELECT strftime('%Y%m', t.SDATE) AS MONTH, o.ORG_NM, COUNT(DISTINCT t.SABUN) AS EMP_CNT FROM THRM151 t JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY MONTH, o.ORG_NM ORDER BY MONTH, o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "다중 JOIN과 GROUP BY를 사용하여 부서별 월 단위로 직원 수를 집계"
+  },
+  {
+    "id": "hrdb_ext_209",
+    "question": "현재 재직 중인 부장들의 부서별 총 인원 수를 알려줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(h.SABUN) AS MANAGER_COUNT FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.JIKGUB_NM = '부장' AND t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "직급별로 필터링 후 부서별 직원 수를 그룹화하여 집계"
+  },
+  {
+    "id": "hrdb_ext_210",
+    "question": "팀명과 각 팀의 최소 급여 수령자를 보여줘",
+    "SQL": "SELECT o.ORG_NM, h.NAME, MIN(p.TOT_EARNING_MON) AS MIN_SALARY FROM TCPN303 p JOIN THRM100 h ON p.SABUN = h.SABUN JOIN TORG101 o ON p.ORG_CD = o.ORG_CD GROUP BY o.ORG_NM ORDER BY MIN_SALARY ASC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "부서별 최소 급여를 확인하기 위해 그룹화와 집계 함수 사용"
+  },
+  {
+    "id": "hrdb_ext_211",
+    "question": "2026년 기준으로 모든 직원 각각의 근속 연수를 계산해줘",
+    "SQL": "SELECT h.SABUN, h.NAME, ROUND((julianday('2026-12-31') - julianday(h.EMP_YMD)) / 365, 1) AS TENURE_YEARS FROM THRM100 h JOIN THRM151 t ON h.SABUN = t.SABUN WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL ORDER BY TENURE_YEARS DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "날짜 계산을 통해 직원별 근속 연수를 계산"
+  },
+  {
+    "id": "hrdb_ext_212",
+    "question": "2026년 3월 기준 휴가 잔여일이 가장 많은 직원 3명을 알려줘",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.REST_CNT > 0 ORDER BY t.REST_CNT DESC LIMIT 3",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "휴가 잔여일을 기준으로 상위 값을 정렬 및 제한"
+  },
+  {
+    "id": "hrdb_ext_213",
+    "question": "각 부서에서 가장 오래 근무 중인 직원의 이름을 알려줘",
+    "SQL": "SELECT o.ORG_NM, h.NAME, MIN(t.SDATE) AS START_DATE FROM THRM151 t JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE t.EDATE IS NULL GROUP BY o.ORG_NM ORDER BY START_DATE ASC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "부서별 최소 발령 날짜를 통해 가장 오래 근무한 직원 필터링"
+  },
+  {
+    "id": "hrdb_ext_214",
+    "question": "2026년 현재 직급별 직원 수를 집계해서 보여줘",
+    "SQL": "SELECT t.JIKGUB_NM, COUNT(DISTINCT t.SABUN) AS EMP_COUNT FROM THRM151 t WHERE t.STATUS_CD = 'S10' AND t.EDATE IS NULL GROUP BY t.JIKGUB_NM ORDER BY EMP_COUNT DESC",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "인사 운영자",
+    "rationale": "직급별로 직원 수를 그룹화 및 집계"
+  },
+  {
+    "id": "hrdb_ext_215",
+    "question": "2026년에 생성된 연차 중 사용된 개수가 10개 이상인 직원들의 이름과 잔여 연차 개수를 알려줘",
+    "SQL": "SELECT h.NAME, t.REST_CNT FROM TTIM511 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YY = '2026' AND t.USED_CNT >= 10",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "조건 필터링과 다중 테이블 조인을 통해 특정 연도에 대한 사용량 기반 조회를 검증"
+  },
+  {
+    "id": "hrdb_ext_216",
+    "question": "각 부서별로 2026년에 사용된 전체 연차 개수와 부서명을 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(t.USED_CNT) AS total_used FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' AND h.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "부서별 집계와 조건 필터링을 결합하여 그룹화된 결과를 검증"
+  },
+  {
+    "id": "hrdb_ext_217",
+    "question": "2026년 3월의 각 직원별 초과근무 시간과 야간 근무 시간을 계산해줘",
+    "SQL": "SELECT h.NAME, t.REWARD_OVER_TIME, t.REWARD_NIGHT_TIME FROM TTIM413 t JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603'",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "시간 데이터를 특정 월로 필터링하고 개별 직원별로 세부 통계를 집계 가능"
+  },
+  {
+    "id": "hrdb_ext_218",
+    "question": "2026년 각 부서별로 직원당 평균 사용 연차 개수를 계산해줘",
+    "SQL": "SELECT o.ORG_NM, AVG(t.USED_CNT) AS avg_used FROM TTIM511 t JOIN THRM151 h ON t.SABUN = h.SABUN JOIN TORG101 o ON h.ORG_CD = o.ORG_CD WHERE t.YY = '2026' AND h.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "부서별 평균 연차 사용량을 계산하는 집계와 그룹 기능을 검증"
+  },
+  {
+    "id": "hrdb_ext_219",
+    "question": "2026년 3월 기준으로 가장 초과근무 시간이 많은 직원의 이름과 소속된 팀을 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN THRM100 h ON t.SABUN = h.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE t.YM = '202603' AND t.REWARD_OVER_TIME = (SELECT MAX(REWARD_OVER_TIME) FROM TTIM413 WHERE YM = '202603')",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "서브쿼리를 사용하여 특정 기준 최대값과 관련된 데이터를 검색"
+  },
+  {
+    "id": "hrdb_ext_220",
+    "question": "2026년에 팀별로 사용된 연차 수와 남은 연차 수를 보여줘",
+    "SQL": "SELECT o.ORG_NM, SUM(a.USE_CNT) AS total_used, SUM(a.REST_CNT) AS total_remaining FROM TTIM511 a JOIN THRM151 t ON a.SABUN = t.SABUN JOIN TORG101 o ON t.ORG_CD = o.ORG_CD WHERE a.YY = '2026' AND t.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "여러 테이블을 JOIN한 뒤 특정 연도 조건과 GROUP BY를 사용하는 집계 패턴"
+  },
+  {
+    "id": "hrdb_ext_221",
+    "question": "2026년 3월에 초과 근무 시간이 가장 많은 직원의 이름과 부서명을 알려줘",
+    "SQL": "SELECT h.NAME, o.ORG_NM, t.MONTH_ACTUAL_WORK_TIME - t.MONTH_PLAN_WORK_TIME AS overtime_hours FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' AND m.EDATE IS NULL ORDER BY overtime_hours DESC LIMIT 1",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "초과 근무 시간을 계산하고 이를 기준으로 정렬 후 상위 결과를 제한하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_222",
+    "question": "2026년에 연차를 모두 사용한 직원들의 이름과 직급을 보여줘",
+    "SQL": "SELECT h.NAME, m.JIKGUB_NM FROM TTIM511 a JOIN THRM151 m ON a.SABUN = m.SABUN JOIN THRM100 h ON a.SABUN = h.SABUN WHERE a.USE_CNT = a.CRE_CNT AND a.YY = '2026' AND m.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "연차 생성 및 사용 수치를 비교하여 조건 필터링하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_223",
+    "question": "2026년 기준 전체 직원들의 평균 사용 연차를 직급별로 보여줘",
+    "SQL": "SELECT m.JIKGUB_NM, AVG(a.USE_CNT) AS avg_used_leave FROM TTIM511 a JOIN THRM151 m ON a.SABUN = m.SABUN WHERE a.YY = '2026' AND m.EDATE IS NULL GROUP BY m.JIKGUB_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "직급별로 그룹화하고 평균 값을 집계하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_224",
+    "question": "2026년 연차를 모두 소진한 직원 수를 팀별로 보여줘",
+    "SQL": "SELECT o.ORG_NM, COUNT(a.SABUN) AS total_employees FROM TTIM511 a JOIN THRM151 m ON a.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE a.YY = '2026' AND a.USE_CNT = a.CRE_CNT AND m.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "특정 조건을 만족하는 직원 수를 부서별로 세는 패턴"
+  },
+  {
+    "id": "hrdb_ext_225",
+    "question": "2026년 3월 기준, 직원별로 실제 초과 근무 시간과 야간 근무 시간을 보여줘",
+    "SQL": "SELECT h.NAME, t.MONTH_ACTUAL_WORK_TIME - t.MONTH_PLAN_WORK_TIME AS overtime_hours, t.MONTH_WORK_NIGHT_TIME AS night_hours FROM TTIM413 t JOIN THRM151 m ON t.SABUN = m.SABUN JOIN THRM100 h ON t.SABUN = h.SABUN WHERE t.YM = '202603' AND m.EDATE IS NULL",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "직원별로 초과 근무와 야간 근무 시간 계산을 병행하는 패턴"
+  },
+  {
+    "id": "hrdb_ext_226",
+    "question": "2026년 부서별로 남은 연차의 평균 값을 계산해서 보여줘",
+    "SQL": "SELECT o.ORG_NM, AVG(a.REST_CNT) AS avg_remaining_leave FROM TTIM511 a JOIN THRM151 m ON a.SABUN = m.SABUN JOIN TORG101 o ON m.ORG_CD = o.ORG_CD WHERE a.YY = '2026' AND m.EDATE IS NULL GROUP BY o.ORG_NM",
+    "db_id": "hrdb",
+    "difficulty": "hard",
+    "persona": "휴가 관리자",
+    "rationale": "부서별로 남은 연차 평균 값을 계산하는 집계 패턴"
+  }
+]

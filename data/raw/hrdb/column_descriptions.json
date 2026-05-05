@@ -1,0 +1,115 @@
+{
+  "_comment": "HRDB 물리 테이블의 한글 컬럼 설명. SchemaLinker가 컬럼 주석으로 주입한다.",
+
+  "THRM100": {
+    "_desc": "직원 기본정보 (직원 마스터)",
+    "ENTER_CD": "법인코드",
+    "SABUN": "사원번호",
+    "RES_NO": "주민등록번호",
+    "SEX_TYPE": "성별 (M=남, F=여)",
+    "NAME": "사원명 (한글)",
+    "NAME_CN": "사원명 (중문)",
+    "NAME_US": "사원명 (영문)",
+    "NAME_JP": "사원명 (일문)",
+    "BIR_YMD": "생년월일 (YYYYMMDD)",
+    "EMP_YMD": "입사일자 (YYYYMMDD)",
+    "RET_YMD": "퇴직일자 (YYYYMMDD, 재직 시 NULL)",
+    "FOREIGN_YN": "외국인 여부"
+  },
+
+  "THRM151": {
+    "_desc": "직원 재직 현황 (직원 발령·상태 이력)",
+    "ENTER_CD": "법인코드",
+    "SABUN": "사원번호",
+    "SDATE": "시작일자 (발령·배치 시작)",
+    "EDATE": "종료일자 (해당 상태 종료 — 현재 재직 시 NULL)",
+    "ORG_CD": "소속 조직코드 (TORG101 참조)",
+    "STATUS_CD": "재직상태코드 (S10=재직, 등)",
+    "STATUS_NM": "재직상태명 ('재직', '휴직', '퇴직' 등)",
+    "JIKCHAK_CD": "직책코드 (T03=팀장 등)",
+    "JIKCHAK_NM": "직책명 ('팀장', '본부장', '파트장' 등)",
+    "JIKWEE_CD": "직위코드",
+    "JIKWEE_NM": "직위명",
+    "JIKGUB_CD": "직급코드 (J01=사원, J02=주임, J03=대리, J04=과장, J05=차장, J06=부장, J07=이사)",
+    "JIKGUB_NM": "직급명 ('사원', '주임', '대리', '과장', '차장', '부장', '이사')"
+  },
+
+  "TORG101": {
+    "_desc": "조직(부서) 정보",
+    "ENTER_CD": "법인코드",
+    "ORG_CD": "조직코드",
+    "SDATE": "조직 시작일자",
+    "EDATE": "조직 종료일자 (운영 중이면 NULL)",
+    "ORG_NM": "조직명 (한글)",
+    "ORG_FULL_NM": "조직 전체명",
+    "ORG_ENG_NM": "조직명 (영문)",
+    "ORG_TYPE": "조직 유형 (W2001=본부, W2002=팀)",
+    "TEL_NO": "조직 전화번호"
+  },
+
+  "TORG900": {
+    "_desc": "법인 정보",
+    "ENTER_CD": "법인코드",
+    "ENTER_NM": "법인명 (한글)",
+    "ENTER_ENG_NM": "법인명 (영문)",
+    "DOMAIN": "법인 도메인",
+    "USE_YN": "사용 여부"
+  },
+
+  "TCPN303": {
+    "_desc": "월별 급여명세 (지급 내역 상세)",
+    "ENTER_CD": "법인코드",
+    "PAY_ACTION_CD": "급여 지급 액션 코드 (PYYYYMM 형식, 예: P202603 = 2026년 3월)",
+    "SABUN": "사원번호",
+    "NAME": "사원명",
+    "EMP_YMD": "입사일자",
+    "ORG_CD": "소속 조직코드",
+    "JIKGUB_CD": "직급코드",
+    "JIKWEE_CD": "직위코드",
+    "JIKCHAK_CD": "직책코드",
+    "ORDINARY_MON": "통상임금",
+    "TOT_EARNING_MON": "총 지급액 (세전)",
+    "PAYMENT_MON": "실 지급액 (세후)",
+    "TOT_DED_MON": "총 공제액",
+    "ITAX_MON": "소득세",
+    "EI_EE_MON": "고용보험 (직원부담분)",
+    "NP_EE_MON": "국민연금 (직원부담분)",
+    "HI_EE_MON": "건강보험 (직원부담분)",
+    "OVERTIME_HOUR": "초과근무시간",
+    "NIGHTWORK_HOUR": "야간근무시간",
+    "HOLIDAY_WORK_HOUR": "휴일근무시간",
+    "ABSENCE_CNT": "결근일수",
+    "LATENESS_CNT": "지각일수",
+    "LEAVE_CNT": "조퇴일수"
+  },
+
+  "TTIM413": {
+    "_desc": "월별 근태 집계",
+    "ENTER_CD": "법인코드",
+    "APPLY_YY": "적용 연도",
+    "YM": "연월 (YYYYMM)",
+    "SABUN": "사원번호",
+    "MONTH_PLAN_WORK_TIME": "월 계획 근무시간",
+    "MONTH_ACTUAL_WORK_TIME": "월 실제 근무시간",
+    "MONTH_WORK_NIGHT_TIME": "월 야간근무시간",
+    "MONTH_PAID_VACATION_TIME": "월 유급 휴가시간",
+    "MONTH_HOL_WORK_BASE_TIME": "월 휴일 근무시간 (기본)",
+    "MONTH_HOL_WORK_OVER_TIME": "월 휴일 근무시간 (초과)"
+  },
+
+  "TTIM511": {
+    "_desc": "연차 휴가 관리",
+    "ENTER_CD": "법인코드",
+    "YY": "연도 (YYYY)",
+    "SABUN": "사원번호",
+    "GNT_CD": "연차 구분코드 (AL001=일반연차)",
+    "USE_S_YMD": "사용 가능 시작일",
+    "USE_E_YMD": "사용 가능 종료일",
+    "CRE_CNT": "생성(부여)된 연차 일수",
+    "FRD_CNT": "이월 연차 일수",
+    "USE_CNT": "총 사용 가능 일수",
+    "USED_CNT": "실제 사용한 연차 일수",
+    "REST_CNT": "잔여 연차 일수",
+    "COM_CNT": "소진 일수"
+  }
+}
