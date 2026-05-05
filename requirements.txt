@@ -1,8 +1,12 @@
-# SC-TSQL 의존성
-# Python 3.10+ 권장
+# SC-TSQL 의존성 — 본 파일은 src/ + scripts/ + 백엔드까지 모두 커버한다.
+# Python 3.10+ 권장. 백엔드(FastAPI)는 backend/requirements.txt와 중복 정의돼 있다.
 
-# OpenAI API (LLM + 임베딩)
+# OpenAI API (LLM + 임베딩) + 재시도 래퍼
 openai==1.51.0
+tenacity>=8.2,<10            # openai_retry.py — RateLimit/APITimeout 자동 재시도
+
+# 환경변수 자동 로드 (.env)
+python-dotenv>=1.0.0
 
 # NLI 모델 (Semantic Consistency Verifier)
 transformers==4.44.2
@@ -33,3 +37,12 @@ scikit-learn==1.5.2
 
 # 로깅
 loguru==0.7.2
+
+# Demo backend (FastAPI) — 데모 UI를 띄울 때 필수
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+websockets>=12.0
+
+# LangGraph 오케스트레이터 (선택 경로 — 미설치 시 src.langgraph_orchestrator 비활성)
+langgraph>=0.2,<1.0

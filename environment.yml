@@ -7,10 +7,15 @@ dependencies:
   - python=3.10
   - pip
   - pip:
+    # 핵심 — LLM·임베딩 호출 + 재시도 + .env 로더
     - openai==1.51.0
+    - tenacity>=8.2,<10
+    - python-dotenv>=1.0.0
+    # NLI / 모델
     - transformers==4.44.2
     - torch==2.4.1
     - sentence-transformers==3.1.1
+    # 데이터·SQL
     - numpy==1.26.4
     - pandas==2.2.3
     - datasets==3.0.1
@@ -20,3 +25,10 @@ dependencies:
     - faiss-cpu==1.8.0
     - scikit-learn==1.5.2
     - loguru==0.7.2
+    # Demo backend (FastAPI) — uvicorn으로 백엔드를 띄우려면 필수
+    - fastapi>=0.110.0
+    - uvicorn[standard]>=0.29.0
+    - pydantic>=2.0.0
+    - websockets>=12.0
+    # LangGraph 오케스트레이터 (선택 — 미설치 시 자동 비활성)
+    - langgraph>=0.2,<1.0

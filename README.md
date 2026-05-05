@@ -51,26 +51,34 @@ A Self-Correcting Text-to-SQL Framework for Enhancing Enterprise Data Accessibil
 .
 ├── src/
 │   ├── sc_tsql.py              # 메인 파이프라인 오케스트레이터
-│   ├── schema_linker.py        # 스키마 링킹
-│   ├── sql_generator.py        # SQL 생성
+│   ├── schema_linker.py        # 스키마 링킹 (FAISS 인덱스 디스크 캐시 포함)
+│   ├── sql_generator.py        # SQL 생성 (스트리밍 CoT 지원)
 │   ├── execution_validator.py  # 실행 기반 검증
-│   ├── semantic_verifier.py    # NLI 의도 일치 검증 (RQ1 핵심)
+│   ├── semantic_verifier.py    # NLI 의도 일치 검증 + LLM 자기비평 (RQ1 핵심)
 │   ├── corrector.py            # 오류 유형별 교정 지시문 라우팅 (RQ2 핵심)
-│   ├── metrics.py              # 평가 지표 (EX, CSR, ICS, Latency)
 │   ├── result_explainer.py     # 결과 자연어 설명 생성
+│   ├── metrics.py              # 평가 지표 (EX, CSR, ICS, Latency)
+│   ├── openai_retry.py         # OpenAI 재시도 + 스트리밍 헬퍼
+│   ├── guardrails.py           # 운영 가이드라인 (§6.2)
+│   ├── value_retriever.py      # DB 값 매칭(Value Retrieval)
+│   ├── langgraph_orchestrator.py  # 선택 — LangGraph 기반 변형
 │   └── baselines/
 │       ├── zeroshot.py         # Zero-shot 베이스라인
 │       ├── dail_sql.py         # DAIL-SQL (Gao et al., VLDB 2024)
-│       └── mac_sql.py          # MAC-SQL (Wang et al., EMNLP 2024)
+│       ├── mac_sql.py          # MAC-SQL (Wang et al., EMNLP 2024)
+│       └── din_sql.py          # DIN-SQL
 ├── configs/
-│   ├── config.yaml             # 기본 설정 (GPT-4o)
-│   └── config_gpt5mini.yaml    # 경량 모델 설정
+│   ├── config.yaml             # 기본 실험 설정 (GPT-4o)
+│   ├── config_gpt4o.yaml       # 본 실험 (Self-Consistency k=5)
+│   ├── config_gpt4_pilot.yaml  # 파일럿용
+│   └── config_demo.yaml        # 시연 백엔드 우선 로드 (top_k 확대 등)
 ├── data/
 │   └── raw/
-│       ├── bird/               # BIRD 벤치마크 (dev.json)
-│       └── hrdb/               # 기업 인사 DB (스키마-온리 + 합성 데이터)
-├── evaluate.py                 # 평가 진입점
-├── backend/                    # FastAPI 데모 백엔드
+│       ├── hrdb/               # 합성 인사 DB (저장소에 포함, ~7 MB)
+│       └── bird/               # BIRD 벤치마크 — 별도 다운로드 필요 (gitignored)
+├── scripts/                    # 데이터 증강·결과 집계·도식 생성·시연 스모크
+├── evaluate.py                 # 평가 진입점 (BIRD/HRDB 공정 비교)
+├── backend/                    # FastAPI 데모 백엔드 (스트리밍 SSE + 워밍업)
 ├── frontend/                   # Vite + React 데모 프런트엔드
 ├── docker/
 │   └── nginx.conf              # nginx SPA + 프록시 설정
@@ -78,35 +86,59 @@ A Self-Correcting Text-to-SQL Framework for Enhancing Enterprise Data Accessibil
 ├── Dockerfile.frontend         # 프런트엔드 Docker 이미지
 ├── docker-compose.yml          # 서비스 오케스트레이션
 ├── .env.example                # 환경변수 템플릿
-├── docs/                       # 논문·기획서·프롬프트 정의
-├── outputs/
-│   ├── logs/                   # 실험 로그
-│   └── checkpoints/            # 체크포인트
-└── environment.yml
+├── docs/                       # 논문·도식·프롬프트 정의
+├── _workspace/                 # 논문 작업 산출물 (선행연구·검토·rebuttal)
+├── outputs/                    # 실험 로그·체크포인트·FAISS 캐시 (gitignored)
+├── third_party/                # BIRD 공식 평가 스크립트 사본
+├── requirements.txt            # 통합 Python 의존성
+├── backend/requirements.txt    # 백엔드 단독 설치용 (서브셋)
+├── environment.yml             # conda 환경 정의 (requirements.txt와 동기화)
+├── setup_env.sh                # conda 환경 + pip 설치 자동화
+└── CLAUDE.md                   # 코드베이스·작업 규칙 안내
 ```
 
 ---
 
 ## 설치 및 환경 구성
 
-### 1. 환경 생성
+### 빠른 시작 (5분 셋업)
 
 ```bash
-conda env create -f environment.yml
+git clone https://github.com/jinhyukkk/graduateProject2.git
+cd graduateProject2
+
+# 1) Python 환경 (conda)
+bash setup_env.sh                 # sc_tsql_env 생성 + requirements.txt 설치
 conda activate sc_tsql_env
+
+# 2) OpenAI API 키
+cp .env.example .env              # 편집 후 OPENAI_API_KEY=sk-... 입력
+
+# 3) 프런트엔드 의존성
+cd frontend && npm ci && cd ..
+
+# 4) (선택) BIRD 벤치마크 다운로드 — HRDB만 쓸 거면 생략 가능
+#    https://bird-bench.github.io/ → data/raw/bird/dev_databases/
+
+# 5) 데모 실행
+uvicorn backend.main:app --reload   # 부팅 시 HRDB 파이프라인 자동 워밍업
+cd frontend && npm run dev          # 브라우저: http://localhost:5173
 ```
 
-### 2. API 키 설정
+### 수동 설치 (conda 없이)
 
 ```bash
-bash setup_env.sh
+python3.10 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt           # src/ + scripts/ + 백엔드 모두 포함
+cp .env.example .env                       # OPENAI_API_KEY 입력
+cd frontend && npm ci && cd ..
 ```
 
-`.env` 파일에 OpenAI API 키를 설정한다:
-
-```
-OPENAI_API_KEY=sk-...
-```
+> **첫 실행 시 자동으로 일어나는 일** (대기 시간 안내)
+> - NLI 모델 `cross-encoder/nli-deberta-v3-base` (~500 MB) HuggingFace 캐시로 다운로드
+> - SchemaLinker FAISS 인덱스 빌드 — HRDB 기준 ~5–10초 (OpenAI 임베딩 API 사용)
+> - 두 단계 결과는 `outputs/cache/schema_linker/`에 저장돼 재시작 시 즉시 복원
+> - 백엔드는 `lifespan` 훅에서 위 작업을 **백그라운드**로 수행 → 사용자 첫 쿼리는 콜드 페널티 없음
 
 ---
 
@@ -185,7 +217,7 @@ python evaluate.py --config configs/config.yaml --dataset bird --model zeroshot
 ### 로컬 개발 환경
 
 ```bash
-# 백엔드 (FastAPI)
+# 백엔드 (FastAPI) — 부팅 시 HRDB 파이프라인 자동 워밍업
 uvicorn backend.main:app --reload
 
 # 프런트엔드 (Vite + React)
@@ -193,6 +225,13 @@ cd frontend && npm run dev
 ```
 
 브라우저에서 `http://localhost:5173` 접속.
+
+#### 시연 화면이 보여 주는 것
+
+- **단계별 추론 스트리밍** — SQL 초안 작성 → 의미 검증 → 교정 → 결과 설명을 라운드별 헤더와 함께 토큰 단위로 출력
+- **자기교정 라운드** — 오류 유형(`E1` 구문 / `E2` 테이블 / `E_intent` 의도불일치 등) 진단과 재생성 SQL
+- **3축 검증 결과** — 실행 통과 여부 / NLI ICS / LLM 자기비평 점수
+- **조회 결과 + 자연어 답변** — 표 → 비전문가용 한국어 1–2문장 요약
 
 ### Docker 환경
 
@@ -247,6 +286,21 @@ docker compose down       # 종료
 - **HRDB는 스키마-온리.** 실제 인사 데이터는 보유하지 않으며, 테이블 구조만 가져와 합성 데이터로 채워 사용한다 (개인정보 보호).
 - **베이스라인 재실행.** DAIL-SQL, MAC-SQL 인용 수치를 그대로 사용하지 않고 GPT-4o로 재실행해 동일 LLM 환경에서 비교한다.
 - **이중 검증.** BIRD dev set → HRDB 실무형 환경 순으로 두 환경 모두에서 보고한다.
+
+---
+
+## 데이터 안내 (저장소 vs 별도 다운로드)
+
+| 항목 | 위치 | 상태 |
+|------|------|------|
+| HRDB 합성 SQLite (`hrdb.sqlite`) | `data/raw/hrdb/` | **저장소 포함** |
+| HRDB dev/메타/스키마/빌드 스크립트 | `data/raw/hrdb/` | **저장소 포함** |
+| BIRD `dev.json`·`dev_tables.json` 등 메타 | `data/raw/bird/` | **별도 다운로드** ([BIRD 공식](https://bird-bench.github.io/)) |
+| BIRD `dev_databases/*.sqlite` (~1.4 GB) | `data/raw/bird/dev_databases/` | **별도 다운로드** |
+| 실험 결과·로그·FAISS 캐시 | `outputs/` | gitignored, 자동 생성 |
+| OpenAI API 키 | `.env` | gitignored, `.env.example` 참고 |
+
+> BIRD 자료는 라이선스·용량 문제로 저장소에 포함하지 않습니다. HRDB만으로도 데모 UI와 `evaluate.py --dataset hrdb`는 정상 동작합니다.
 
 ---
 

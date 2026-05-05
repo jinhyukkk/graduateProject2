@@ -67,6 +67,8 @@ echo ""
 echo "[5/5] 설치된 패키지 검증 중..."
 python -c "
 import openai; print(f'  openai:               {openai.__version__}')
+import tenacity; print(f'  tenacity:             {tenacity.__version__}')
+import dotenv; print(f'  python-dotenv:        OK')
 import transformers; print(f'  transformers:         {transformers.__version__}')
 import torch; print(f'  torch:                {torch.__version__}')
 import sentence_transformers; print(f'  sentence-transformers: {sentence_transformers.__version__}')
@@ -75,6 +77,12 @@ import sqlparse; print(f'  sqlparse:             {sqlparse.__version__}')
 import yaml; print(f'  PyYAML:               OK')
 import sklearn; print(f'  scikit-learn:         {sklearn.__version__}')
 import loguru; print(f'  loguru:               {loguru.__version__}')
+import fastapi; print(f'  fastapi:              {fastapi.__version__}')
+import uvicorn; print(f'  uvicorn:              {uvicorn.__version__}')
+try:
+    import langgraph; print(f'  langgraph:            OK (선택 경로 활성)')
+except ImportError:
+    print(f'  langgraph:            (미설치 — LangGraph 경로는 비활성, 기본 SCTSQL은 정상)')
 "
 
 echo ""
@@ -85,11 +93,10 @@ echo ""
 echo "활성화 방법:"
 echo "  conda activate $ENV_NAME"
 echo ""
-echo "데이터셋 수동 다운로드 필요:"
-echo "  1. Spider: https://yale-lily.github.io/spider"
-echo "     -> data/raw/ 디렉토리에 압축 해제"
-echo "  2. BIRD: https://bird-bench.github.io/"
-echo "     -> data/raw/ 디렉토리에 압축 해제"
+echo "데이터셋 안내:"
+echo "  - HRDB(합성): 저장소에 포함됨 (data/raw/hrdb/)"
+echo "  - BIRD:       https://bird-bench.github.io/ 에서 받아 data/raw/bird/dev_databases/ 로"
+echo "  - Spider:     (선택) https://yale-lily.github.io/spider"
 echo ""
 echo "OPENAI_API_KEY 설정:"
 echo "  cp .env.example .env"
