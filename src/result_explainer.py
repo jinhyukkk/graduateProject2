@@ -4,9 +4,11 @@ Result Explainer (Section 4.5)
 """
 
 import os
+from typing import Callable
+
 from openai import OpenAI
 
-from src.openai_retry import chat_completion
+from src.openai_retry import chat_completion, chat_completion_streaming
 
 
 class ResultExplainer:
@@ -26,6 +28,7 @@ class ResultExplainer:
         final_sql: str,
         results: list[tuple],
         correction_history: list[dict],
+        on_token: Callable[[str], None] | None = None,
     ) -> str:
         """
         Section 4.5: 쿼리 결과를 비전문가가 이해할 수 있는 자연어로 설명한다.
@@ -44,36 +47,49 @@ class ResultExplainer:
         result_preview = self._format_results(results)
         correction_summary = self._format_correction_history(correction_history)
 
-        prompt = f"""You are a helpful data assistant explaining database query results to a non-technical user.
+        had_correction = bool(correction_history)
+        correction_block = correction_summary if had_correction else "(no corrections — first attempt succeeded)"
+
+        prompt = f"""You are a friendly data assistant. Reply to a non-technical user in **Korean**.
 
 ## User's Question
 {query}
 
-## SQL Query Used
-{final_sql}
-
 ## Query Results
 {result_preview}
 
-{correction_summary}
+## Correction status
+{correction_block}
 
-## Instructions
-1. Explain the results in plain, easy-to-understand language (Korean).
-2. Directly answer the user's original question based on the results.
-3. If corrections were made, briefly mention what was fixed and why, in a reassuring tone.
-4. Do NOT include SQL code or technical jargon.
-5. Keep the explanation concise but complete.
+## Style guidelines (시연 폴리시)
+- 1~2문장. 메신저 답변 톤. 불필요한 인사·결말 멘트 금지.
+- 핵심 수치를 먼저 제시, 그 다음 짧은 부연. (예: "재직 중인 직원은 20명입니다.")
+- "쿼리", "SQL", "데이터베이스" 같은 기술 용어 금지.
+- **교정이 있었던 경우에만** 한 문장으로 가볍게 언급 (예: "처음 결과가 비어 있어 조건을 다시 잡았어요.").
+- 교정이 없었으면 교정 관련 멘트를 절대 추가하지 말 것.
+- 결과가 비어 있으면 사용자에게 "데이터가 없습니다"라고 솔직히 답하고, 가능한 원인을 한 문장으로만 짚어줄 것.
 
-## 설명"""
+## 답변"""
 
-        response = chat_completion(
+        if on_token is None:
+            response = chat_completion(
+                self.client,
+                model=self.llm_model,
+                temperature=0.3,
+                max_completion_tokens=180,  # 1-2문장 강제
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return response.choices[0].message.content.strip()
+
+        # 시연 폴리시: 최종 답변 정리 단계의 LLM 출력을 토큰 단위로 흘려보낸다.
+        return chat_completion_streaming(
             self.client,
+            on_token,
             model=self.llm_model,
-            temperature=0.3,  # 약간의 자연스러움을 위해 0.3
-            max_completion_tokens=512,
+            temperature=0.3,
+            max_completion_tokens=180,
             messages=[{"role": "user", "content": prompt}],
-        )
-        return response.choices[0].message.content.strip()
+        ).strip()
 
     def _format_results(self, results: list[tuple]) -> str:
         """결과를 텍스트로 포맷한다."""

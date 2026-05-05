@@ -15,7 +15,19 @@ sql_generator:
 
 correction:
   max_rounds: 3
-  semantic_threshold: 0.75
+  # NLI θ 보정: 0.75는 DeBERTa-NLI v3에서 *어휘까지 거의 동일한 paraphrase*만
+  # 통과시키는 엄격값. 시연 진단(2026-05-01) 결과 *의미 일치하나 어휘 다른* 경우
+  # 0.4 미만에 머무는 사례가 빈번해, 사용자 인식상 거짓 경고가 다수 발생.
+  # 0.5로 완화 = "entailment 우위(50%+)이면 의미 일치로 간주", neutral·contradiction
+  # 합쳐서 50% 미만일 때만 경고. EIED 분석은 0.5 임계로도 동일하게 산출 가능.
+  semantic_threshold: 0.5
+
+# Self-consistency (Wang et al. 2022)
+# k>=2면 SQL 생성기에서 k개 후보를 샘플링하고, 각 후보를 실행하여
+# 결과 핑거프린트 다수결로 단일 SQL을 선택한다. k=1이면 비활성(단일 생성).
+self_consistency:
+  k: 5
+  temperature: 0.7
 
 nli:
   model: "cross-encoder/nli-deberta-v3-base"
@@ -23,9 +35,22 @@ nli:
 evaluation:
   datasets: ["hrdb", "bird"]
   bird_dev_path: "data/raw/bird/dev_300.json"
-  hrdb_dev_path: "data/raw/hrdb/dev.json"
+  # 257-item combined dev set: 30 manual seeds + 227 auto-validated (5 personas × 3 difficulty)
+  hrdb_dev_path: "data/raw/hrdb/dev_combined.json"
   hrdb_db_path: "data/raw/hrdb/hrdb.sqlite"
   hrdb_metadata_path: "data/raw/hrdb/metadata.json"
+
+baselines:
+  dail_sql:
+    few_shot_k: 5                    # 원 논문 Few-shot+SC 설정 (k=5). 경량 래퍼로 SC는 생략.
+    skeleton_sim_threshold: 0.85     # SQL skeleton Jaccard 임계값 (논문 기본값)
+  mac_sql:
+    max_refine_rounds: 3     # 논문 Appendix A.3 기본값
+    sqlite_timeout: 5.0
+    selector_char_threshold: 0  # 항상 Selector 활성화 (BIRD 스키마 1-3k자에서도 프루닝 필요)
+  din_sql:
+    max_correction_rounds: 1  # 논문 §3.4 gentle 1회
+    sqlite_timeout: 5.0
 
 output:
   results_dir: "outputs/logs/"

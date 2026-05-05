@@ -12,7 +12,6 @@ Phase 3 추가:
 - conversation_history: 멀티턴 대화 히스토리 SQL 생성 프롬프트 반영
 """
 
-import json
 import sqlite3
 import time
 from dataclasses import dataclass, field
@@ -25,6 +24,7 @@ from src.semantic_verifier import SemanticVerifier, VerificationResult
 from src.corrector import Corrector
 from src.result_explainer import ResultExplainer
 from src.guardrails import OutputGuardrails, OutputGuardrailsResult
+from src.value_retriever import ValueRetriever
 
 
 @dataclass
@@ -40,6 +40,10 @@ class AblationFlags:
     disable_reranking: bool = False
     # Improvement #3 어블레이션: True면 Corrector 프롬프트에 이전 라운드 교정 이력을 포함하지 않는다.
     disable_correction_history: bool = False
+    # Value retrieval 어블레이션: True면 DB content 기반 값 매칭을 건너뛴다.
+    disable_value_retrieval: bool = False
+    # Self-consistency 어블레이션: True면 k=1로 강제(단일 생성)
+    disable_self_consistency: bool = False
     # RQ1 순수 어블레이션: True면 NLI 검증 자체는 수행(지표 보고용)하되,
     # 교정 트리거에서는 NLI 불일치를 사용하지 않는다. reranker/지표 계산은 유지.
     # → "NLI의 교정 기여도"만 분리 측정. disable_semantic_verifier와의 차이:
@@ -144,6 +148,89 @@ class SCTSQL:
         semantic_threshold = config["correction"].get("semantic_threshold", 0.75)
         self.output_guardrails = OutputGuardrails(semantic_threshold=semantic_threshold)
 
+        # Value Retriever (DB content 기반 값 매칭)
+        if not self.ablation.disable_value_retrieval:
+            self.value_retriever = ValueRetriever(db_path)
+        else:
+            self.value_retriever = None
+
+    def _self_consistency_select(
+        self, candidates: list[dict]
+    ) -> tuple[dict, dict]:
+        """k개 SQL 후보 중 결과 핑거프린트 다수결로 1개를 선택한다.
+
+        선택 절차:
+          1) 빈/syntax-fail 후보는 즉시 제외.
+          2) 각 후보를 ExecutionValidator로 안전 실행 → 결과 행 정렬 후 hash로 핑거프린트 산출.
+          3) 핑거프린트 빈도가 가장 높은 그룹의 첫 후보를 선택.
+          4) 모두 실패하면 confidence가 가장 높은 원 후보를 fallback.
+
+        Wang et al. (2022) Self-Consistency 방식의 SQL 변형:
+          텍스트 동률 비교가 아니라 *실행 결과 동치성*으로 의미 다수결.
+
+        Returns:
+            (chosen_candidate, summary_dict). summary는 _emit("self_consistency", ...)
+            이벤트 페이로드로 사용된다.
+        """
+        import hashlib
+
+        if not candidates:
+            return {"sql": "", "confidence": 0.0}, {"k": 0, "valid": 0, "groups": []}
+
+        valid: list[tuple[dict, ValidationResult, str]] = []
+        for c in candidates:
+            sql = (c.get("sql") or "").strip()
+            if not sql:
+                continue
+            try:
+                vr = self.execution_validator.validate(sql, self.db_path)
+            except Exception:
+                continue
+            if not vr.success:
+                continue
+            # 결과 핑거프린트: 행을 정렬 후 직렬화하여 hash. 컬럼 순서·이름 무시 위해
+            # 각 행을 정렬된 튜플로, 그 뒤 전체 행을 정렬해 안정화.
+            try:
+                rows = vr.results or []
+                # 각 row의 element를 str로 정규화 후 정렬(순서 무관 비교).
+                norm = sorted(tuple(sorted(map(str, r))) for r in rows)
+                fp = hashlib.sha256(repr(norm).encode("utf-8")).hexdigest()[:16]
+            except Exception:
+                fp = "exec_ok_unhashable"
+            valid.append((c, vr, fp))
+
+        if not valid:
+            # fallback: confidence 최댓값
+            best = max(candidates, key=lambda x: x.get("confidence", 0.0))
+            return best, {
+                "k": len(candidates), "valid": 0,
+                "groups": [], "selector": "fallback_confidence",
+            }
+
+        # 핑거프린트 그룹화
+        groups: dict[str, list[tuple[dict, ValidationResult]]] = {}
+        for c, vr, fp in valid:
+            groups.setdefault(fp, []).append((c, vr))
+        # 빈도 내림차순, 동률시 평균 confidence 높은 쪽
+        ranked = sorted(
+            groups.items(),
+            key=lambda kv: (
+                len(kv[1]),
+                sum(c.get("confidence", 0.0) for c, _ in kv[1]) / len(kv[1]),
+            ),
+            reverse=True,
+        )
+        winner_fp, winner_members = ranked[0]
+        chosen = winner_members[0][0]
+        summary = {
+            "k": len(candidates),
+            "valid": len(valid),
+            "winner_votes": len(winner_members),
+            "groups": [{"fp": fp, "votes": len(m)} for fp, m in ranked[:3]],
+            "selector": "majority_vote_by_result",
+        }
+        return chosen, summary
+
     def _fallback_schema_context(self) -> dict:
         """스키마 링커 비활성화 시 전체 스키마를 직접 읽어 반환한다."""
         conn = sqlite3.connect(self.db_path)
@@ -205,6 +292,14 @@ class SCTSQL:
             if on_event is not None:
                 on_event(event, data)
 
+        # 추론 토큰을 흘려보내는 단일 채널. sc_tsql은 단계 헤더(예: "[교정 라운드 1]")를
+        # 토큰처럼 직접 emit해 시연 화면에서 단계가 자연스럽게 구분되도록 한다.
+        def _emit_reasoning(text: str) -> None:
+            if on_event is not None and text:
+                on_event("reasoning_chunk", {"text": text})
+
+        on_token: Callable[[str], None] | None = _emit_reasoning if on_event is not None else None
+
         # Step 1: Schema Linking (Section 4.2)
         _emit("step", {"stage": "schema_link"})
         t0 = time.time()
@@ -214,16 +309,65 @@ class SCTSQL:
             schema_context = self._fallback_schema_context()
         stage_latency["schema_linking"] = round(time.time() - t0, 3)
 
+        # Step 1.5: Value Retrieval — 쿼리 내 값 후보를 DB 실제 값과 매칭
+        value_hints = ""
+        if self.value_retriever is not None:
+            t0 = time.time()
+            try:
+                vr_result = self.value_retriever.retrieve(query, schema_context)
+                value_hints = vr_result.get("prompt_block", "")
+                stage_latency["value_retrieval"] = round(time.time() - t0, 3)
+                _emit("value_hints", {
+                    "candidates": vr_result.get("candidates_extracted", []),
+                    "n_matches": len(vr_result.get("matches", {})),
+                })
+            except Exception as e:
+                stage_latency["value_retrieval"] = round(time.time() - t0, 3)
+                # 값 검색 실패는 파이프라인 차단 사유 아님
+                import logging
+                logging.getLogger(__name__).warning("value retrieval failed: %s", e)
+
         # Step 2: SQL Generation (Section 4.3)
         _emit("step", {"stage": "sql_generating"})
         t0 = time.time()
-        gen_result = self.sql_generator.generate(
-            query, schema_context,
-            conversation_history=conversation_history or [],
-            evidence=evidence,
-        )
-        current_sql = gen_result["sql"]
-        sql_confidence = gen_result["confidence"]
+
+        # Self-consistency 설정: k>=2이고 streaming 시연이 아니면 다중 후보 생성
+        # → 결과 핑거프린트 다수결로 단일 SQL을 선택한다 (Wang et al. 2022 SC).
+        sc_cfg = self.config.get("self_consistency", {}) or {}
+        sc_k = int(sc_cfg.get("k", 1))
+        if self.ablation.disable_self_consistency:
+            sc_k = 1
+        # 시연 폴리시: on_event가 연결돼 있으면 SQL 생성 LLM 호출을 streaming으로
+        # 돌려 CoT(추론 과정) 토큰을 'reasoning_chunk' 이벤트로 실시간 전송한다.
+        # ChatGPT 스타일의 점진적 표시를 위해 사용. SC(k>=2)에서는 후보 다수결로
+        # 단일 SQL을 정하므로 토큰 스트리밍이 의미 없어 끄고 단계 헤더만 표시한다.
+        gen_streaming_token = on_token if sc_k <= 1 else None
+        if on_token is not None:
+            _emit_reasoning("\n**[1단계] SQL 초안 작성 — 의도 풀이 → 스키마 선택 → SQL 작성**\n\n")
+
+        if sc_k >= 2:
+            # Self-consistency 경로: k개 후보 생성 → 실행 → 결과 핑거프린트 다수결
+            candidates = self.sql_generator.generate_candidates(
+                query, schema_context,
+                k=sc_k,
+                conversation_history=conversation_history or [],
+                evidence=evidence,
+                value_hints=value_hints,
+            )
+            chosen, sc_summary = self._self_consistency_select(candidates)
+            current_sql = chosen["sql"]
+            sql_confidence = chosen["confidence"]
+            _emit("self_consistency", sc_summary)
+        else:
+            gen_result = self.sql_generator.generate(
+                query, schema_context,
+                conversation_history=conversation_history or [],
+                evidence=evidence,
+                value_hints=value_hints,
+                on_token=gen_streaming_token,
+            )
+            current_sql = gen_result["sql"]
+            sql_confidence = gen_result["confidence"]
         stage_latency["sql_generation"] = round(time.time() - t0, 3)
         _emit("sql_generated", {"sql": current_sql, "confidence": round(sql_confidence, 4)})
 
@@ -235,32 +379,60 @@ class SCTSQL:
         for round_num in range(1, self.max_rounds + 1):
             t0 = time.time()
 
-            # Section 4.4.1: 실행 기반 검증
+            # 실행 검증(Section 4.4.1) + 의미 검증(Section 4.4.2)을 병렬로 실행한다.
+            # 두 단계는 입력만 공유(쿼리, SQL)하고 서로 의존하지 않으므로 안전하게 병렬화 가능.
+            # NLI inference(보통 0.5-2s) + LLM 백번역(0.3-1s)이 직렬 누적되던 것을 단축한다.
             _emit("step", {"stage": "validating", "round": round_num})
-            if not self.ablation.disable_execution_validator:
-                validation_result = self.execution_validator.validate(current_sql, self.db_path)
-            else:
+            _emit("step", {"stage": "verifying", "round": round_num})
+
+            def _run_validation() -> ValidationResult:
+                if self.ablation.disable_execution_validator:
+                    return ValidationResult(
+                        success=True, results=[], column_names=[],
+                        error_type=None, error_message=None,
+                        is_empty=False, is_excessive=False, row_count=0,
+                    )
+                return self.execution_validator.validate(current_sql, self.db_path)
+
+            # 검증·의미 검증의 데이터 의존성 처리:
+            # LLM 자기 비평이 *실행 결과 미리보기* 를 컨텍스트로 받으면 더 정확하므로
+            # 실행 검증을 먼저 끝낸 뒤 의미 검증에 결과를 전달한다. 단, 응답 시간 영향을
+            # 최소화하기 위해 실행 검증은 병렬로 백번역과 함께 진행 가능하지만 본 구현은
+            # 단순화를 위해 실행 → 의미 순으로 직렬화한다 (비용: NLI 단독 대비 +2~3s).
+            if self.ablation.disable_execution_validator:
                 validation_result = ValidationResult(
                     success=True, results=[], column_names=[],
                     error_type=None, error_message=None,
                     is_empty=False, is_excessive=False, row_count=0,
                 )
-            _emit("validated", {
-                "success": validation_result.success,
-                "error_type": validation_result.error_type,
-            })
-
-            # Section 4.4.2: 의미론적 일관성 검증
-            _emit("step", {"stage": "verifying", "round": round_num})
-            if not self.ablation.disable_semantic_verifier:
-                verification_result = self.semantic_verifier.verify(query, current_sql)
             else:
+                validation_result = self.execution_validator.validate(current_sql, self.db_path)
+
+            if self.ablation.disable_semantic_verifier:
                 verification_result = VerificationResult(
                     back_translation="",
                     similarity_score=1.0,
                     is_consistent=True,
                     mismatch_diagnosis=None,
                 )
+            else:
+                if on_token is not None:
+                    _emit_reasoning(
+                        f"\n\n**[2단계 · 라운드 {round_num}] 의미 검증 — 실행 결과·스키마로 의도 일치 자기비평**\n\n"
+                    )
+                verification_result = self.semantic_verifier.verify(
+                    query,
+                    current_sql,
+                    schema_text=schema_context.get("schema_text", "") if isinstance(schema_context, dict) else "",
+                    result_preview=validation_result.results,
+                    column_names=validation_result.column_names,
+                    on_token=on_token,
+                )
+
+            _emit("validated", {
+                "success": validation_result.success,
+                "error_type": validation_result.error_type,
+            })
             _emit("verified", {
                 "score": round(verification_result.similarity_score, 4),
                 "is_consistent": verification_result.is_consistent,
@@ -299,6 +471,10 @@ class SCTSQL:
                 "semantic_score": verification_result.similarity_score,
             }
 
+            if on_token is not None:
+                _emit_reasoning(
+                    f"\n\n**[3단계 · 라운드 {round_num}] 교정 — 오류 유형 `{error_type}` 전용 지시문으로 SQL 재생성**\n\n"
+                )
             corrected_sql = self.corrector.correct(
                 query, current_sql, validation_result, verification_result,
                 schema_context=schema_context,
@@ -306,20 +482,44 @@ class SCTSQL:
                     [] if self.ablation.disable_correction_history else correction_history
                 ),
                 evidence=evidence,
+                value_hints=value_hints,
+                on_token=on_token,
+            )
+
+            # Fix A: Rollback — 교정이 원본보다 열화되면 원본 유지.
+            # Phase 2 분석에서 교정 기여 0%, 교정 시도 4건 전부 최종 실패 확인.
+            # → 교정을 시도하되, 결과가 나쁘면 되돌려 "함부로 망가뜨리지 않음"을 보장.
+            accepted_sql, rollback_info = self._validate_correction(
+                original_sql=current_sql,
+                corrected_sql=corrected_sql,
+                original_validation=validation_result,
+                original_verification=verification_result,
+                query=query,
             )
 
             correction_entry["corrected_sql"] = corrected_sql
+            correction_entry["accepted_sql"] = accepted_sql
+            correction_entry["rolled_back"] = rollback_info["rolled_back"]
+            correction_entry["rollback_reason"] = rollback_info.get("reason", "")
             correction_history.append(correction_entry)
             _emit("corrected", {
                 "round": round_num,
                 "error_type": error_type,
                 "original_sql": correction_entry["original_sql"],
                 "corrected_sql": corrected_sql,
+                "accepted_sql": accepted_sql,
+                "rolled_back": rollback_info["rolled_back"],
                 "semantic_score": round(verification_result.similarity_score, 4),
                 "validation_success": False,
             })
 
-            current_sql = corrected_sql
+            # 롤백 시엔 동일한 원본으로 다음 라운드 재시도해도 의미 없으므로 루프 종료
+            if rollback_info["rolled_back"]:
+                stage_latency[f"correction_round_{round_num}"] = round(time.time() - t0, 3)
+                current_sql = accepted_sql
+                break
+
+            current_sql = accepted_sql
             stage_latency[f"correction_round_{round_num}"] = round(time.time() - t0, 3)
 
         # 최종 실행 (교정 후 결과 갱신)
@@ -332,8 +532,11 @@ class SCTSQL:
 
         _emit("step", {"stage": "explaining"})
         t0 = time.time()
+        if on_token is not None:
+            _emit_reasoning("\n\n**[4단계] 결과 설명 — 비전문가용 자연어 답변 정리**\n\n")
         explanation = self.result_explainer.explain(
-            query, current_sql, results, correction_history
+            query, current_sql, results, correction_history,
+            on_token=on_token,
         )
         stage_latency["explanation"] = round(time.time() - t0, 3)
         _emit("explanation", {"text": explanation})
@@ -346,12 +549,15 @@ class SCTSQL:
             if verification_result is not None
             else 1.0
         )
+        # 마지막 실행 성공 여부 (validation_result는 마지막 라운드의 검증 결과)
+        last_exec_success = bool(validation_result.success) if validation_result is not None else True
         results, guardrails_result = self.output_guardrails.apply(
             results=results,
             sql_confidence=sql_confidence,
             nli_score=nli_score,
             correction_rounds=len(correction_history),
             max_rounds=self.max_rounds,
+            exec_success=last_exec_success,
         )
 
         return SCTSQLResult(
@@ -371,10 +577,11 @@ class SCTSQL:
             schema_context=schema_context,
         )
 
-    # Fix 2: 모델이 logprob 기반으로 매우 확신하는 SQL(≥ HIGH_CONF)은
-    # NLI만으로는 교정을 트리거하지 않는다. 실행 오류·empty·excessive은 여전히 교정.
-    # → Phase 1 분석에서 conf=0.99 SQL이 NLI score=0.4로 교정 트리거되어 망가지는 사례 확인.
-    HIGH_CONF_SQL_THRESHOLD = 0.90
+    # Fix 2 (조정, Phase 2 분석 반영): logprob confidence 게이팅.
+    # 이전 0.9는 gpt-4o의 거의 모든 SQL(conf≈0.99)을 차단해 교정 트리거 0건.
+    # → 0.7로 완화해 교정 기회를 열되, Fix A(_validate_correction) 롤백으로 안전망 제공.
+    # 0.7 = "모델이 대충 확신" 수준. 그 이상은 NLI 불일치 시에도 원본 신뢰.
+    HIGH_CONF_SQL_THRESHOLD = 0.70
 
     def _needs_correction(
         self,
@@ -422,3 +629,56 @@ class SCTSQL:
             return True
 
         return False
+
+    def _validate_correction(
+        self,
+        original_sql: str,
+        corrected_sql: str,
+        original_validation: ValidationResult,
+        original_verification: VerificationResult,
+        query: str,
+    ) -> tuple[str, dict]:
+        """
+        Fix A + Fix C (D1 분석 반영): 교정 결과를 재검증하고, 원본보다 열화되면 롤백한다.
+
+        Fix C 개정: rollback 판단에 NLI를 사용하지 않는다. D1에서 관찰된 현상:
+          - NLI 기반 rollback이 너무 엄격해 좋은 교정까지 되돌림
+          - no_nli 어블레이션에서 CSR=50%인데 main에서 CSR=0%로 튐 → NLI rollback이 원인
+          - 따라서 rollback은 **실행 기반 dominance만** 사용
+
+        Dominance 원칙 (실행 기반):
+          - 원본이 실행 성공 + 결과 있음:
+              · 교정이 실행 실패 → 롤백
+              · 교정이 empty (원본은 non-empty) → 롤백
+              · 그 외 → 수용 (NLI 차이와 무관)
+          - 원본이 실행 실패:
+              · 무조건 교정 수용 (다음 라운드 기회)
+          - SQL 동일 → 롤백 플래그는 False
+
+        의미 기반 판단은 `semantic_verifier`가 다음 라운드의 교정 트리거로 담당.
+        """
+        info = {"rolled_back": False, "reason": ""}
+
+        if not corrected_sql or corrected_sql.strip() == original_sql.strip():
+            return original_sql, info
+
+        # 원본이 실행 실패였으면 교정은 기회 → 무조건 수용
+        if not original_validation.success:
+            return corrected_sql, info
+
+        # 원본이 실행 성공 — 실행 기반 dominance만 체크
+        corrected_valid = self.execution_validator.validate(corrected_sql, self.db_path)
+
+        if not corrected_valid.success:
+            info["rolled_back"] = True
+            info["reason"] = f"corrected exec failed: {corrected_valid.error_type}"
+            return original_sql, info
+
+        # 원본은 결과 있었는데 교정은 empty → 롤백
+        if corrected_valid.is_empty and not original_validation.is_empty:
+            info["rolled_back"] = True
+            info["reason"] = "corrected is empty while original had rows"
+            return original_sql, info
+
+        # Fix C: NLI regression 체크는 제거 — 의미 기반 판단은 다음 라운드 교정 트리거가 담당
+        return corrected_sql, info

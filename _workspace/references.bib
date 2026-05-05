@@ -1,0 +1,250 @@
+% ===========================================================================
+% references.bib — KITS 제출본 v06+R-34 기준 참고문헌 BibTeX 통합
+% Generated: 2026-05-01 (paper-reviewer-editor)
+%
+% 본 파일은 docs/논문_초안.md 의 footnote [^1] ~ [^15] 를 BibTeX 형태로
+% 정리한다. 본문 인용 매핑 군집 오류 (Critical 2) 를 차단하기 위해
+% 06_revision_guide.md 옵션 A 의 재정렬 결과를 반영한다.
+%
+% prepublication 태그가 부착된 항목 (7건) 은 paper-researcher 에게 최종
+% 게재 정보 확인을 위임하며, 마감 D-7 안에 게재 정보 확보 시 태그 제거.
+%
+% 인용 키 명명 규칙: <FirstAuthor><Year><FirstWord>
+% ===========================================================================
+
+% ===== Tier 1: 정식 게재 (NeurIPS / VLDB / COLING / ICLR / ACL Findings) =====
+
+@inproceedings{li2023bird,
+  author    = {Li, Jinyang and Hui, Binyuan and Qu, Ge and Yang, Jiaxi and
+               Li, Binhua and Li, Bowen and Wang, Bailin and Qin, Bowen and
+               Geng, Ruiying and Huo, Nan and others},
+  title     = {Can {LLM} Already Serve as a Database Interface? A {BIg} Bench
+               for Large-Scale Database Grounded Text-to-{SQL}s ({BIRD})},
+  booktitle = {Advances in Neural Information Processing Systems
+               ({NeurIPS} 2023)},
+  year      = {2023},
+  note      = {본문 footnote [^1]}
+}
+
+@article{gao2024dailsql,
+  author    = {Gao, Dawei and Wang, Haibin and Li, Yaliang and Sun, Xiuyu and
+               Qian, Yichen and Ding, Bolin and Zhou, Jingren},
+  title     = {Text-to-{SQL} Empowered by Large Language Models:
+               A Benchmark Evaluation ({DAIL-SQL})},
+  journal   = {Proceedings of the {VLDB} Endowment},
+  volume    = {17},
+  number    = {5},
+  pages     = {1132--1145},
+  year      = {2024},
+  note      = {본문 footnote [^2]}
+}
+
+@inproceedings{pourreza2023dinsql,
+  author    = {Pourreza, Mohammadreza and Rafiei, Davood},
+  title     = {{DIN-SQL}: Decomposed In-Context Learning of Text-to-{SQL}
+               with Self-Correction},
+  booktitle = {Advances in Neural Information Processing Systems
+               ({NeurIPS} 2023)},
+  year      = {2023},
+  note      = {본문 footnote [^4]; 기존 [^3] 와 중복 통합}
+}
+
+@inproceedings{wang2024macsql,
+  author    = {Wang, Bing and Ren, Changyu and Yang, Jian and
+               Liang, Xinyi and Bai, Jiaqi and Chai, Linzheng and
+               Yan, Zhao and Zhang, Qian-Wen and Yin, Di and others},
+  title     = {{MAC-SQL}: A Multi-Agent Collaborative Framework for
+               Text-to-{SQL}},
+  booktitle = {Proceedings of the 31st International Conference on
+               Computational Linguistics ({COLING} 2024)},
+  year      = {2024},
+  note      = {본문 footnote [^5]}
+}
+
+@inproceedings{wang2023selfconsistency,
+  author    = {Wang, Xuezhi and Wei, Jason and Schuurmans, Dale and
+               Le, Quoc and Chi, Ed H. and Narang, Sharan and
+               Chowdhery, Aakanksha and Zhou, Denny},
+  title     = {Self-Consistency Improves Chain-of-Thought Reasoning in
+               Language Models},
+  booktitle = {International Conference on Learning Representations
+               ({ICLR} 2023)},
+  year      = {2023},
+  note      = {본문 footnote [^18] (재정렬 후); 본 SC k=5 외부 흡수 인용 근거}
+}
+
+@inproceedings{he2023deberta,
+  author    = {He, Pengcheng and Gao, Jianfeng and Chen, Weizhu},
+  title     = {{DeBERTa-v3}: Improving {DeBERTa} using {ELECTRA}-Style
+               Pre-Training with Gradient-Disentangled Embedding Sharing},
+  booktitle = {International Conference on Learning Representations
+               ({ICLR} 2023)},
+  year      = {2023},
+  note      = {본문 footnote [^17] (재정렬 후); NLI 모델 기반}
+}
+
+@inproceedings{tian2026pvsql,
+  author    = {Tian, Yifan and Zhang, Tianyu},
+  title     = {{PV-SQL}: Synergizing Database Probing and Rule-based
+               Verification for Text-to-{SQL} Agents},
+  booktitle = {Findings of the Association for Computational Linguistics
+               ({ACL} 2026)},
+  year      = {2026},
+  note      = {본문 footnote [^16] (재정렬 후)}
+}
+
+% ===== Tier 2: arXiv preprint / [prepublication] 태그 =====
+
+@misc{cen2024sqlfixagent,
+  author    = {Cen, Jipeng and Liu, Jiaxin and Li, Zhixu and Wang, Jingping},
+  title     = {{SQLFixAgent}: Towards Semantic-Accurate {SQL} Generation
+               via Multi-Agent Collaboration},
+  year      = {2024},
+  eprint    = {2406.13408},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CL},
+  note      = {본문 footnote [^6]; [prepublication] — paper-researcher
+               게재 정보 확인 위임}
+}
+
+@misc{askari2024magic,
+  author    = {Askari, Arian and Poelitz, Christian and Tang, Xinye},
+  title     = {{MAGIC}: Generating Self-Correction Guideline for In-Context
+               Text-to-{SQL}},
+  year      = {2024},
+  eprint    = {2406.12692},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CL},
+  note      = {본문 footnote [^7]; [prepublication] — paper-researcher
+               게재 정보 확인 위임}
+}
+
+@misc{talaei2024chess,
+  author    = {Talaei, Shayan and Pourreza, Mohammadreza and Chang, Yu-Chen and
+               Mirhoseini, Azalia and Saberi, Amin},
+  title     = {{CHESS}: Contextual Harnessing for Efficient {SQL} Synthesis},
+  year      = {2024},
+  eprint    = {2405.16755},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CL},
+  note      = {본문 footnote [^8]; [prepublication] — VLDB 2025 후속 가능성
+               paper-researcher 확인 위임}
+}
+
+@misc{pourreza2024chasesql,
+  author    = {Pourreza, Mohammadreza and Li, Hailong and Sun, Ruoxi and
+               Chung, Yeounoh and Talaei, Shayan and others},
+  title     = {{CHASE-SQL}: Multi-Path Reasoning and Preference Optimized
+               Candidate Selection in Text-to-{SQL}},
+  year      = {2024},
+  eprint    = {2410.01943},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CL},
+  note      = {본문 footnote [^13] (재정렬 후); [prepublication] —
+               ICLR 2025 게재 가능성 paper-researcher 확인 위임}
+}
+
+@misc{shkapenyuk2025askdata,
+  author    = {Shkapenyuk, Vladislav and Korn, Flip and others},
+  title     = {{AskData} + {GPT-4o}: Automated Database Profiling for
+               Text-to-{SQL} on {BIRD}},
+  year      = {2025},
+  howpublished = {{BIRD} Leaderboard Technical Report,
+                  dev 77.64\% / test 81.95\%},
+  note      = {본문 footnote [^14] (재정렬 후); [technical report] —
+               외부 학술 게재 미확정. 인용 시 *technical report* 라벨 권장.}
+}
+
+@misc{sun2025agentar,
+  author    = {Sun, Yujia and others},
+  title     = {{Agentar-Scale-SQL}: Advancing Text-to-{SQL} through
+               Orchestrated Test-Time Scaling},
+  year      = {2025},
+  eprint    = {2509.24403},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CL},
+  note      = {본문 footnote [^15] (재정렬 후); [prepublication]}
+}
+
+@misc{openai2024gpt4o,
+  author    = {{OpenAI}},
+  title     = {{GPT-4o} System Card},
+  year      = {2024},
+  month     = {August},
+  howpublished = {OpenAI Technical Report},
+  note      = {본문 footnote [^19] (재정렬 후); [technical report]}
+}
+
+% ===== Tier 3: 메타데이터 확보 필요 — paper-researcher 위임 =====
+
+@misc{TBD_sqlens,
+  title     = {{SQLens}: SQL Execution Plan and Result Statistic Analysis
+               for Clause-level Re-writing},
+  year      = {TBD},
+  note      = {본문 footnote [^9] (재정렬 후); 본문 §2.2 line 122 인용.
+               *paper-researcher 메타데이터 확보 필요* — 저자, 게재처,
+               연도, arXiv ID 또는 학술 게재 정보. D-7 안 회수 권장.}
+}
+
+@misc{TBD_iclerrors,
+  title     = {A Study of In-Context-Learning-Based Text-to-{SQL} Errors},
+  year      = {TBD},
+  note      = {본문 footnote [^10] (재정렬 후); 본문 §2.2 line 122 + §3.1
+               line 151 인용. 본 연구의 8개 오류 유형 (E1~E7) 분류 체계
+               근거. *paper-researcher 메타데이터 확보 필요*. D-7 안 회수
+               권장.}
+}
+
+@misc{TBD_sqlofthought,
+  title     = {{SQL-of-Thought}: Chain-of-Thought Reasoning for {SQL}
+               Generation},
+  year      = {TBD},
+  note      = {본문 footnote [^11] (재정렬 후); 본문 §2.2 line 122 인용.
+               *paper-researcher 메타데이터 확보 필요*. D-7 안 회수 권장.}
+}
+
+@misc{TBD_sqldriller,
+  title     = {{SQLDriller}: Result Distribution Anomaly-Triggered
+               Re-writing for Text-to-{SQL}},
+  year      = {TBD},
+  note      = {본문 footnote [^12] (재정렬 후); 본문 §2.2 line 122 인용.
+               *paper-researcher 메타데이터 확보 필요*. D-7 안 회수 권장.}
+}
+
+% ===========================================================================
+% 통계 요약
+% ===========================================================================
+%
+% 총 entries: 17 (재정렬 후 [^1] ~ [^19] 중 [^3] DIN-SQL 중복 통합 + 4건 TBD)
+%
+% Tier 1 (정식 게재): 7건
+%   - li2023bird, gao2024dailsql, pourreza2023dinsql, wang2024macsql,
+%     wang2023selfconsistency, he2023deberta, tian2026pvsql
+%
+% Tier 2 (preprint / technical report — [prepublication] 태그): 7건
+%   - cen2024sqlfixagent, askari2024magic, talaei2024chess,
+%     pourreza2024chasesql, shkapenyuk2025askdata, sun2025agentar,
+%     openai2024gpt4o
+%
+% Tier 3 (메타데이터 미확보 — paper-researcher 위임): 4건
+%   - TBD_sqlens, TBD_iclerrors, TBD_sqlofthought, TBD_sqldriller
+%
+% ===========================================================================
+% paper-writer-kr 적용 시 주의
+% ===========================================================================
+%
+% 1. 본 BibTeX 파일은 06_revision_guide.md C-2 옵션 A (재정렬) 기준이다.
+%    옵션 B (본문 인용 약화) 채택 시 Tier 3 4건은 본 파일에서 삭제하고
+%    본문 §2.2 line 122 의 SQLens/SQL-of-Thought/SQLDriller 인용 자체를
+%    *대표 사례*로 약화 + footnote 제거.
+%
+% 2. KITS 양식이 BibTeX → 본문 number citation 또는 author-year citation
+%    중 어떤 스타일을 요구하는지에 따라 변환. 현 markdown footnote
+%    [^1] ~ [^15] 는 number citation 이며, KITS 양식 docx 변환 시
+%    페이지 하단 각주 또는 본문 끝 참고문헌 리스트 둘 다 호환.
+%
+% 3. Tier 3 의 4건이 D-7 안에 회수되지 않을 경우, 옵션 B 로 fallback.
+%    paper-researcher 가 회수 결과를 06_review_summary_for_pm.md 에 보고
+%    하면 paper-writer-kr 가 본 파일 갱신 후 본문 적용.
+%
+% ===========================================================================

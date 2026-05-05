@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="460" viewBox="0 0 720 460" font-family="-apple-system, BlinkMacSystemFont, sans-serif">
+<style>
+.cell{stroke:#333;stroke-width:1.2;}
+.lbl{font-size:12px;fill:#333;}
+.lbl-big{font-size:18px;font-weight:600;fill:#111;}
+.axis{font-size:13px;fill:#666;font-weight:500;}
+.title{font-size:16px;font-weight:700;fill:#111;}
+.eied{font-size:14px;font-weight:600;fill:#c0392b;}
+</style>
+<text x="360" y="28" text-anchor="middle" class="title">실행 검증축 × NLI 의도 일치축 — 사각지대 분포 (n=300)</text>
+<text x="100" y="80" class="axis">실행 검증 (exec validator)</text>
+<text x="20" y="240" class="axis" transform="rotate(-90 20 240)">NLI 의미 검증 (ICS ≥ 0.75)</text>
+<text x="260" y="90" text-anchor="middle" class="lbl">exec_pass = True</text>
+<text x="500" y="90" text-anchor="middle" class="lbl">exec_pass = False</text>
+<text x="125" y="169" text-anchor="end" class="lbl">NLI pass</text>
+<text x="125" y="299" text-anchor="end" class="lbl">NLI fail (ICS&lt;θ)</text>
+<rect class="cell" x="140" y="100" width="240" height="130" fill="#dff0d8"/>
+<text x="260" y="159" text-anchor="middle" class="lbl-big">132</text>
+<text x="260" y="179" text-anchor="middle" class="lbl">둘 다 통과 (안전)</text>
+<rect class="cell" x="380" y="100" width="240" height="130" fill="#fcf8e3"/>
+<text x="500" y="159" text-anchor="middle" class="lbl-big">18</text>
+<text x="500" y="179" text-anchor="middle" class="lbl">실행 실패</text>
+<rect class="cell" x="140" y="230" width="240" height="130" fill="#fde2e2"/>
+<text x="260" y="289" text-anchor="middle" class="lbl-big">12</text>
+<text x="260" y="309" text-anchor="middle" class="lbl">★ 사각지대 후보</text>
+<rect class="cell" x="380" y="230" width="240" height="130" fill="#f5b7b1"/>
+<text x="500" y="289" text-anchor="middle" class="lbl-big">138</text>
+<text x="500" y="309" text-anchor="middle" class="lbl">둘 다 실패</text>
+<rect x="60" y="370" width="600" height="60" fill="#fff3f3" stroke="#c0392b" stroke-width="2" rx="8"/>
+<text x="80" y="395" class="eied">★ EIED (NLI 독립 탐지율) = 68.1%</text>
+<text x="80" y="415" class="lbl">실행 통과한 사각지대(EX=0) 144건 중 98건을 NLI가 단독 탐지 → "교정 트리거"가 아닌 "독립 진단 축" 운영 근거</text>
+</svg>

@@ -1,0 +1,56 @@
+# Demo backend 전용 설정 — 시연 환경에서 정확도 우선.
+#
+# 운영 원칙 (CLAUDE.md 메모리 반영):
+#   - 본 실험(BIRD/HRDB 평가)은 config.yaml 또는 config_gpt4o.yaml 사용
+#   - 파일럿/배치 실험은 config_gpt5mini.yaml 사용
+#   - 본 파일은 사용자 시연(/api/query/stream)에서만 우선 로드
+#
+# Backend service의 load_config()가 이 파일이 존재하면 우선 사용한다.
+
+llm:
+  # 시연 정확도 우선 — gpt-4o-mini의 join 컬럼 구분 약점(JIKGUB_CD vs JIKGUB_NM)을
+  # 회피하기 위해 gpt-4o 본 모델 사용. 시연 단위 비용은 사내 시연 가치 대비 충분.
+  model: "gpt-4o-2024-11-20"
+  temperature: 0.0
+  max_tokens: 1024
+
+embedding:
+  model: "text-embedding-3-large"
+
+schema_linker:
+  # HRDB가 577 테이블이라 top-k가 작으면 후보가 잘려 의미 없는 테이블이 누락됨.
+  # 시연 정확도를 위해 후보 풀을 확대한다 (지연 비용 ~수백 ms 추가).
+  top_k_tables: 20
+  top_k_columns: 60
+
+sql_generator:
+  few_shot_k: 5  # gpt-4o가 더 많은 컨텍스트를 안정적으로 처리
+
+correction:
+  max_rounds: 2  # 시연에서 무한 루프(E7→E7→E7) 시간 부담을 줄임
+  semantic_threshold: 0.75
+
+nli:
+  model: "cross-encoder/nli-deberta-v3-base"
+
+evaluation:
+  datasets: ["hrdb", "bird"]
+  bird_dev_path: "data/raw/bird/dev_300.json"
+  hrdb_dev_path: "data/raw/hrdb/dev.json"
+  hrdb_db_path: "data/raw/hrdb/hrdb.sqlite"
+  hrdb_metadata_path: "data/raw/hrdb/metadata.json"
+
+baselines:
+  dail_sql:
+    few_shot_k: 5
+    skeleton_sim_threshold: 0.85
+  mac_sql:
+    max_refine_rounds: 3
+    sqlite_timeout: 5.0
+    selector_char_threshold: 0
+
+output:
+  results_dir: "outputs/logs/"
+  checkpoint_dir: "outputs/checkpoints/"
+
+use_langgraph: false

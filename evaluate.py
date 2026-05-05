@@ -22,9 +22,13 @@ KST = timezone(timedelta(hours=9))
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from src.sc_tsql import SCTSQL, AblationFlags
 from src.execution_validator import ExecutionValidator
+from src.openai_retry import get_usage_totals, reset_usage_totals
 from src.metrics import (
     execution_accuracy,
     correction_success_rate,
@@ -34,6 +38,7 @@ from src.metrics import (
 from src.baselines.dail_sql import DAILSQLBaseline
 from src.baselines.mac_sql import MACSQLBaseline
 from src.baselines.zeroshot import ZeroShotBaseline
+from src.baselines.din_sql import DINSQLBaseline
 
 
 def load_hrdb_dev(dev_path: str) -> list[dict]:
@@ -231,6 +236,8 @@ def run_baseline_evaluation(
         model = MACSQLBaseline(config)
     elif model_name == "zeroshot":
         model = ZeroShotBaseline(config)
+    elif model_name == "din_sql":
+        model = DINSQLBaseline(config)
     else:
         raise ValueError(f"Unknown baseline model: {model_name}")
 
@@ -406,6 +413,9 @@ ABLATION_PRESETS = {
     "no_nli_full": AblationFlags(disable_semantic_verifier=True),
     # Cross-encoder reranking만 비활성화
     "no_reranking": AblationFlags(disable_reranking=True),
+    # Self-consistency 어블레이션: k=5 → k=1 (단일 생성)으로 강제
+    # config_gpt4o.yaml의 self_consistency.k=5 설정을 무력화하여 SC 단독 기여도 측정.
+    "no_sc": AblationFlags(disable_self_consistency=True),
 }
 
 
@@ -452,7 +462,9 @@ def run_evaluation(
     print(f"Config: max_rounds={config['correction']['max_rounds']}, "
           f"semantic_threshold={config['correction']['semantic_threshold']}, "
           f"ablation={ablation_name}")
+    print(f"LLM model: {config['llm']['model']}")
     print()
+    reset_usage_totals()
 
     # 데이터 로드
     if dataset == "hrdb":
@@ -583,6 +595,16 @@ def run_evaluation(
             "corrected_successfully": corrected_successfully,
         })
 
+        # EIED 계산용 핵심 필드 (§5.2.3): 실행 축이 통과시킨 사각지대에서
+        # NLI가 단독 탐지한 비율을 사후 집계할 수 있도록, per-sample에 다음을 기록:
+        #   exec_validator_pass: 실행 검증기가 "성공"으로 판정했는가
+        #   nli_score:           ICS (의도 일치 점수)
+        #   nli_flag:            ICS < θ (불일치 판정 여부)
+        #   final_ex_correct:    gold 결과 집합과 일치했는가 (= correct)
+        exec_validator_pass = bool(result.final_validation.success) if result.final_validation else None
+        nli_score = float(result.final_verification.similarity_score) if result.final_verification else None
+        nli_flag = (not bool(result.final_verification.is_consistent)) if result.final_verification else None
+
         # 상세 결과 기록
         detailed_results.append({
             "index": i,
@@ -596,6 +618,11 @@ def run_evaluation(
             "sql_confidence": result.sql_confidence,
             "correction_rounds": result.total_correction_rounds,
             "correction_history": result.correction_history,
+            # EIED 산출용 필드
+            "exec_validator_pass": exec_validator_pass,
+            "nli_score": nli_score,
+            "nli_flag": nli_flag,
+            "final_ex_correct": bool(pred_set == gold_set),
         })
         processed_indices.add(i)
 
@@ -617,6 +644,20 @@ def run_evaluation(
         rounds_info = f" (corrected x{result.total_correction_rounds})" if had_error else ""
         conf_info = f" conf={result.sql_confidence:.2f}"
         print(f"[{i+1}/{len(examples)}] {status} - {db_id}: {question[:60]}...{rounds_info}{conf_info} ({result.latency:.1f}s)")
+
+        # 매 10개마다 누적 EX·비용 스냅샷
+        if (i + 1) % 10 == 0:
+            running_ex = execution_accuracy(pred_results_list, gold_results_list)
+            n_done = len(pred_results_list)
+            snap = get_usage_totals()
+            cost_in = snap["chat_prompt_tokens"] * 30 / 1_000_000
+            cost_out = snap["chat_completion_tokens"] * 60 / 1_000_000
+            print(
+                f"  ── progress {n_done}/{len(examples)}: "
+                f"EX={running_ex*100:.1f}% ({sum(1 for p,g in zip(pred_results_list, gold_results_list) if p==g)}/{n_done})  "
+                f"cost so far ≈ ${cost_in+cost_out:.2f}  "
+                f"(tokens: in={snap['chat_prompt_tokens']:,} out={snap['chat_completion_tokens']:,})"
+            )
 
     # 메트릭 계산
     print()
@@ -666,6 +707,24 @@ def run_evaluation(
         f"results_{dataset}_sc_tsql_{ablation_name}_seed{seed}_{timestamp}.json",
     )
 
+    usage_totals = get_usage_totals()
+    n_eval = max(len(pred_results_list), 1)
+    per_query_usage = {
+        "prompt_tokens_per_query": usage_totals["chat_prompt_tokens"] / n_eval,
+        "completion_tokens_per_query": usage_totals["chat_completion_tokens"] / n_eval,
+        "chat_calls_per_query": usage_totals["chat_calls"] / n_eval,
+    }
+    print()
+    print("=== OpenAI Usage (this run) ===")
+    print(f"  chat calls:           {usage_totals['chat_calls']}")
+    print(f"  prompt tokens:        {usage_totals['chat_prompt_tokens']}")
+    print(f"  completion tokens:    {usage_totals['chat_completion_tokens']}")
+    print(f"  total chat tokens:    {usage_totals['chat_total_tokens']}")
+    print(f"  embedding tokens:     {usage_totals['embedding_total_tokens']} ({usage_totals['embedding_calls']} calls)")
+    print(f"  per-query: prompt={per_query_usage['prompt_tokens_per_query']:.0f}, "
+          f"completion={per_query_usage['completion_tokens_per_query']:.0f}, "
+          f"calls={per_query_usage['chat_calls_per_query']:.1f}")
+
     output_data = {
         "dataset": dataset,
         "model": "sc_tsql",
@@ -687,6 +746,7 @@ def run_evaluation(
             "avg_stage_latency": avg_stage_latency,
             "total_evaluated": len(pred_results_list),
         },
+        "openai_usage": {**usage_totals, **per_query_usage},
         "detailed_results": detailed_results,
     }
 
@@ -719,7 +779,7 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        choices=["sc_tsql", "dail_sql", "mac_sql", "zeroshot"],
+        choices=["sc_tsql", "dail_sql", "mac_sql", "zeroshot", "din_sql"],
         default="sc_tsql",
         help="Model to evaluate: sc_tsql (제안 모델) | dail_sql | mac_sql | zeroshot",
     )

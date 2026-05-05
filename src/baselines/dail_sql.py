@@ -515,7 +515,21 @@ class DAILSQLBaseline(BaselineModel):
             # Step 3: SQL 생성
             response = self._call_llm(messages)
             raw_output = response["content"]
-            sql = extract_sql("SELECT " + raw_output) if raw_output else ""
+            # DAIL-SQL 프롬프트는 "SELECT "로 끝나 LLM이 이어 씀.
+            # 단, LLM이 코드블록이나 "SELECT"로 응답을 시작하면 중복 방지.
+            if raw_output:
+                stripped = raw_output.lstrip()
+                upper = stripped.upper()
+                if "```" in stripped or upper.startswith(("SELECT", "WITH")):
+                    sql = extract_sql(raw_output)
+                else:
+                    sql = extract_sql("SELECT " + raw_output)
+                # Syntax validation: SQL이 SELECT/WITH로 시작하지 않으면 빈 문자열
+                if not sql.lstrip().upper().startswith(("SELECT", "WITH")):
+                    logger.warning("DAILSQL extracted non-SQL output: %s", sql[:80])
+                    sql = ""
+            else:
+                sql = ""
             total_prompt_tokens += response["prompt_tokens"]
             total_completion_tokens += response["completion_tokens"]
 
@@ -560,9 +574,9 @@ class DAILSQLBaseline(BaselineModel):
         parts.append(schema_text)
         parts.append("")
 
-        if evidence and evidence.strip():
-            parts.append(f"/* External knowledge / hint: {evidence.strip()} */")
-            parts.append("")
+        ev = (evidence or "").strip()
+        parts.append(f"/* External knowledge / hint: {ev if ev else 'N/A'} */")
+        parts.append("")
 
         for ex in examples:
             parts.append(f"/* Answer the following: {ex['query']} */")

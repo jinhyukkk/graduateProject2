@@ -23,6 +23,10 @@ export interface ValidationResult {
 export interface VerificationResult {
   back_translation: string;
   similarity_score: number;
+  // 3축 검증: LLM 자기 비평 (Claude/GPT 류 self-critique)
+  llm_critique_score?: number;
+  llm_critique_pass?: boolean;
+  llm_critique_reason?: string;
   is_consistent: boolean;
   mismatch_diagnosis: string | null;
 }
@@ -50,12 +54,21 @@ export interface SchemaContext {
   foreign_keys: ForeignKey[];
 }
 
-// Phase 3: Guardrails info
+// Phase 3: Guardrails info — §6.2 운영 가이드라인 6 케이스 권장 액션 포함
 export interface GuardrailsInfo {
   rows_truncated: boolean;
   original_row_count: number;
   low_confidence_warning: boolean;
   warning_message: string;
+  // §6.2 운영 가이드라인 케이스별 권장 액션
+  action?: string;            // 'auto_execute' | 'auto_with_note' | 'user_warning' |
+                              // 'hitl_triage' | 'retry_auto' | 'empty_result_info' |
+                              // 'clarification_request'
+  action_severity?: string;   // 'info' | 'success' | 'warning' | 'error'
+  action_title?: string;
+  action_detail?: string;
+  case_id?: string;           // 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'C6' | 'Cq' | 'C1m'
+  persona_scenario?: string;  // 'S1' ~ 'S5' (페르소나 시나리오 ID)
 }
 
 // Phase 3: Conversation turn
@@ -104,6 +117,9 @@ export interface StreamState {
   stage: PipelineStage | null;
   sql: string | null;
   confidence: number | null;
+  /** SQL 생성 LLM의 CoT(Chain-of-Thought) 추론을 토큰 단위로 누적한 텍스트.
+   *  reasoning_chunk 이벤트가 도착할 때마다 추가되어 ChatGPT 스타일 점진 표시. */
+  reasoning: string;
   validation: { success: boolean; error_type: string | null } | null;
   verification: { score: number; is_consistent: boolean; back_translation: string } | null;
   correctionSteps: CorrectionStep[];
@@ -115,6 +131,7 @@ export const initialStreamState = (): StreamState => ({
   stage: null,
   sql: null,
   confidence: null,
+  reasoning: '',
   validation: null,
   verification: null,
   correctionSteps: [],

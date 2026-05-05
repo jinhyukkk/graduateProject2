@@ -202,10 +202,8 @@ class MACSQLBaseline(BaselineModel):
         Returns:
             (최종 SQL, 전체 추론 과정 텍스트, {"prompt_tokens": int, "completion_tokens": int})
         """
-        evidence_block = (
-            f"\n## External Knowledge / Hint\n{evidence.strip()}\n"
-            if evidence and evidence.strip() else ""
-        )
+        ev = (evidence or "").strip()
+        evidence_block = f"\n## External Knowledge / Hint\n{ev if ev else 'N/A'}\n"
         prompt = f"""You are an expert SQL query generator. Use a divide-and-conquer approach to answer the question.
 
 ## Database Schema (Relevant Tables Only)
@@ -372,10 +370,8 @@ Final SQL:
         """
         error_msg = feedback["error"]
         exc_class = feedback["exception_class"]
-        evidence_block = (
-            f"\n[External knowledge / hint]\n{evidence.strip()}\n"
-            if evidence and evidence.strip() else ""
-        )
+        ev = (evidence or "").strip()
+        evidence_block = f"\n[External knowledge / hint]\n{ev if ev else 'N/A'}\n"
 
         prompt = f"""[Instruction]
 When executing SQL below, some errors occurred, please fix up SQL based on query and database info. Solve the task step by step if you need to. Using SQL format in the code block, and indicate script type in the code block. When you find an answer, verify the answer carefully.{evidence_block}

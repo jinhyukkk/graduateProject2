@@ -38,15 +38,39 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.routers import query, experiment, config
+from backend.services.tsql_service import warmup_default_pipeline
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """부팅 직후 SC-TSQL 파이프라인을 백그라운드에서 워밍업한다.
+
+    SchemaLinker FAISS 인덱스 빌드 + NLI 모델 로드를 첫 사용자 쿼리 이전에
+    완료해 콜드 스타트를 제거한다. uvicorn은 워밍업을 기다리지 않고 즉시
+    요청을 받기 시작한다.
+    """
+    loop = asyncio.get_running_loop()
+    warmup_task = loop.run_in_executor(None, warmup_default_pipeline)
+    try:
+        yield
+    finally:
+        # 워밍업이 진행 중이라면 정리되도록 잠시 기다린다 (실패해도 종료에 영향 없음)
+        if not warmup_task.done():
+            warmup_task.cancel()
+
 
 app = FastAPI(
     title="SC-TSQL Dashboard API",
     description="Backend API for the SC-TSQL Text-to-SQL experiment dashboard.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # ── CORS ──

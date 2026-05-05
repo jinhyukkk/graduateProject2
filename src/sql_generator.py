@@ -6,6 +6,9 @@ Phase 2: Logprob 기반 Confidence Scoring + Cross-encoder Reranking 추가.
 
 import math
 import os
+from datetime import datetime
+from typing import Callable
+
 import numpy as np
 from openai import OpenAI
 
@@ -149,6 +152,8 @@ class SQLGenerator:
         schema_context: dict,
         conversation_history: list[dict] | None = None,
         evidence: str = "",
+        value_hints: str = "",
+        on_token: Callable[[str], None] | None = None,
     ) -> dict:
         """
         Section 4.3 + Phase 2 + Phase 3: SQL을 생성하고 신뢰도 점수를 함께 반환한다.
@@ -158,6 +163,9 @@ class SQLGenerator:
             schema_context: SchemaLinker.link()의 반환값 (schema_text 포함)
             conversation_history: 이전 대화 이력 (Phase 3 멀티턴).
             evidence: 외부 도메인 지식(BIRD evidence). 비어있으면 무시.
+            on_token: (옵션) LLM이 생성한 토큰을 실시간으로 받는 콜백.
+                제공되면 OpenAI streaming API를 사용해 CoT 추론 과정을 토큰
+                단위로 흘려보낸다. 시연에서 ChatGPT 같은 점진적 표시에 사용.
 
         Returns:
             {
@@ -171,22 +179,177 @@ class SQLGenerator:
         few_shot_block = self._format_few_shot(selected_examples)
         history_block = self._format_conversation_history(conversation_history or [])
         evidence_block = f"\n## External Knowledge / Hint\n{evidence.strip()}\n" if evidence and evidence.strip() else ""
+        value_block = f"\n{value_hints.strip()}\n" if value_hints and value_hints.strip() else ""
 
-        prompt = f"""You are an expert SQL query generator. Given a database schema and a natural language question, generate the correct SQL query.
+        # Today 힌트 — "올해/작년/최근" 같은 상대 시간 표현을 LLM이 학습 cutoff
+        # 시점(예: 2023)으로 잘못 매핑하는 문제를 방지한다 (시연 점검에서 확인됨).
+        today = datetime.now().strftime("%Y-%m-%d")
+        today_block = (
+            f"\n## Today\nCURRENT_DATE = {today}.  "
+            f"Resolve relative time words (올해/작년/이번 달/최근) using this date.\n"
+        )
+
+        prompt = self._build_generation_prompt(
+            schema_text=schema_text,
+            few_shot_block=few_shot_block,
+            history_block=history_block,
+            evidence_block=evidence_block,
+            value_block=value_block,
+            today_block=today_block,
+            query=query,
+        )
+
+        if on_token is None:
+            response = chat_completion(
+                self.client,
+                model=self.llm_model,
+                temperature=self.config["llm"]["temperature"],
+                max_completion_tokens=self.config["llm"]["max_tokens"],
+                messages=[{"role": "user", "content": prompt}],
+                logprobs=True,  # Phase 2: Confidence Scoring
+            )
+            raw = response.choices[0].message.content.strip()
+            confidence = self._compute_confidence(response)
+        else:
+            raw, confidence = self._generate_streaming(prompt, on_token)
+
+        sql = self._extract_sql(raw)
+        return {"sql": sql, "confidence": confidence}
+
+    def generate_candidates(
+        self,
+        query: str,
+        schema_context: dict,
+        k: int,
+        conversation_history: list[dict] | None = None,
+        evidence: str = "",
+        value_hints: str = "",
+        temperature: float | None = None,
+    ) -> list[dict]:
+        """Self-consistency용: 동일 프롬프트로 k개의 SQL 후보를 샘플링 생성.
+
+        temperature > 0 (기본 0.7)으로 다양화하며, 첫 후보는 결정론적(0.0)으로
+        둬서 단일 생성 베이스라인과 동일한 SQL을 항상 포함한다 (탐색 + 활용).
+
+        Args:
+            k: 생성할 후보 수 (>=1).
+            temperature: 샘플링 온도. None이면 config의 self_consistency.temperature
+                또는 기본값 0.7을 사용한다.
+
+        Returns:
+            [{"sql": str, "confidence": float}, ...] 리스트. 빈 SQL은 제외.
+        """
+        if k < 1:
+            raise ValueError("k must be >= 1")
+
+        sample_temp = temperature
+        if sample_temp is None:
+            sample_temp = self.config.get("self_consistency", {}).get("temperature", 0.7)
+
+        schema_text = schema_context.get("schema_text", "")
+        selected_examples = self._select_few_shot(query, schema_text)
+        few_shot_block = self._format_few_shot(selected_examples)
+        history_block = self._format_conversation_history(conversation_history or [])
+        evidence_block = (
+            f"\n## External Knowledge / Hint\n{evidence.strip()}\n"
+            if evidence and evidence.strip() else ""
+        )
+        value_block = f"\n{value_hints.strip()}\n" if value_hints and value_hints.strip() else ""
+        today = datetime.now().strftime("%Y-%m-%d")
+        today_block = (
+            f"\n## Today\nCURRENT_DATE = {today}.  "
+            f"Resolve relative time words (올해/작년/이번 달/최근) using this date.\n"
+        )
+
+        prompt = self._build_generation_prompt(
+            schema_text=schema_text,
+            few_shot_block=few_shot_block,
+            history_block=history_block,
+            evidence_block=evidence_block,
+            value_block=value_block,
+            today_block=today_block,
+            query=query,
+        )
+
+        candidates: list[dict] = []
+        # 첫 후보: temperature=0 (결정론적, 단일 생성과 동일)
+        # 나머지 k-1: temperature=sample_temp (다양화)
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _one_call(temp: float) -> dict:
+            try:
+                response = chat_completion(
+                    self.client,
+                    model=self.llm_model,
+                    temperature=temp,
+                    max_completion_tokens=self.config["llm"]["max_tokens"],
+                    messages=[{"role": "user", "content": prompt}],
+                    logprobs=True,
+                )
+                raw = response.choices[0].message.content.strip()
+                conf = self._compute_confidence(response)
+                sql = self._extract_sql(raw)
+                return {"sql": sql, "confidence": conf}
+            except Exception:
+                return {"sql": "", "confidence": 0.0}
+
+        temps = [0.0] + [sample_temp] * (k - 1)
+        # 병렬 호출로 응답 시간 단축 (k=5 ≈ 단일 호출 + few seconds)
+        with ThreadPoolExecutor(max_workers=min(k, 5)) as pool:
+            results = list(pool.map(_one_call, temps))
+
+        for r in results:
+            if r["sql"]:
+                candidates.append(r)
+        return candidates
+
+    def _build_generation_prompt(
+        self,
+        schema_text: str,
+        few_shot_block: str,
+        history_block: str,
+        evidence_block: str,
+        value_block: str,
+        today_block: str,
+        query: str,
+    ) -> str:
+        """generate()와 generate_candidates()가 공유하는 프롬프트 빌더."""
+        return f"""You are an expert SQL query generator. Given a database schema and a natural language question, generate the correct SQL query.
 
 ## Database Schema
 {schema_text}
-{evidence_block}
+{today_block}{evidence_block}{value_block}
 ## Guidelines
 1. Use only the tables and columns provided in the schema above.
 2. Use proper JOIN conditions based on foreign key relationships shown in FOREIGN KEY definitions.
-3. Be careful with aggregate functions (COUNT, SUM, AVG, etc.) and GROUP BY clauses.
-4. Use appropriate WHERE clauses for filtering. Match the exact case and format of values shown in column comments (-- e.g.: ...).
-5. When filtering on a column that may contain NULLs, explicitly add IS NOT NULL unless the question asks for NULL values.
-6. Always alias every table (e.g. T1, T2) and qualify all column references with the alias (e.g. T1.column_name) to avoid ambiguity.
-7. Do NOT use subqueries unless necessary.
-8. If an "External Knowledge / Hint" section is provided, treat it as authoritative domain knowledge and reflect it in the SQL.
-9. Return ONLY the SQL query, no explanations.
+3. **JOIN value-domain safety (critical)**: Only join columns that share the same value domain. For paired columns where one stores a *code* (e.g. `JIKGUB_CD` with values like 'J01','J02') and the other stores a *human-readable name* (e.g. `JIKGUB_NM` with values like '사원','과장'), NEVER write `T1.X_CD = T2.Y_NM`. Always join code-to-code or name-to-name. Inspect the column comments (-- e.g.: ...) to confirm both sides share the same value style before writing the JOIN.
+4. **Group-by display rule**: When grouping or aggregating by a `_CD` (code) column whose paired `_NM` (name) column is available in the schema, **also SELECT the `_NM` column** alongside the aggregate so the result is human-readable. Do not return rows keyed only by an opaque code.
+5. **Time expressions**: When the question contains relative time words ("올해" = this year, "작년" = last year, "이번 달" = this month, "최근" = recent), use the **CURRENT_DATE** value provided in the "Today" hint (if present) — never assume a past year from training data. Express filters with explicit year/month derived from the CURRENT_DATE.
+6. **Output column discipline**: SELECT only the columns the user asked for, plus the `_NM` companion of any aggregated `_CD` (rule 4). Do not add status/audit columns unless the question references them.
+7. Be careful with aggregate functions (COUNT, SUM, AVG, etc.) and GROUP BY clauses.
+8. Use appropriate WHERE clauses for filtering. Match the exact case and format of values shown in column comments (-- e.g.: ...).
+9. When filtering on a column that may contain NULLs, explicitly add IS NOT NULL unless the question asks for NULL values.
+10. Always alias every table (e.g. T1, T2) and qualify all column references with the alias (e.g. T1.column_name) to avoid ambiguity.
+11. Do NOT use subqueries unless necessary.
+12. If an "External Knowledge / Hint" section is provided, treat it as authoritative domain knowledge and reflect it in the SQL.
+13. If a "Value Hints" section is provided, match string literal values exactly to the DB's actual values listed there (case, spacing).
+
+## Pre-finalization checklist (think through these before writing SQL)
+Briefly answer each line as a single short sentence, THEN write the SQL.
+- **Intent**: What single question is the user asking? (one short sentence in Korean)
+- **Tables/joins**: Which tables and join keys? Do all join keys share the same value domain?
+- **Filters**: Which WHERE conditions? If "재직", did you include EDATE IS NULL? If "올해/작년/최근", did you use Today's CURRENT_DATE?
+- **Aggregation/grouping**: Are GROUP BY columns the right granularity? If grouping by `_CD`, did you SELECT the paired `_NM`?
+- **Output columns**: Do SELECT columns match what the user asked, with no extras?
+
+## Output format
+After the checklist, write the final SQL inside a fenced code block:
+
+```sql
+SELECT ...
+```
+
+Do not add commentary after the code block.
 
 {few_shot_block}{history_block}
 ## Question
@@ -195,30 +358,65 @@ class SQLGenerator:
 ## SQL
 """
 
-        response = chat_completion(
+    def _generate_streaming(
+        self,
+        prompt: str,
+        on_token: Callable[[str], None],
+    ) -> tuple[str, float]:
+        """OpenAI streaming chat completion으로 토큰을 실시간 흘려보낸다.
+
+        시연에서 CoT 추론 과정을 ChatGPT처럼 한 글자씩 보여주기 위한 경로.
+        SQL fenced block(```sql ... ```)은 코드 블록으로 인식되어 on_token에
+        전달되지 않으므로 추론 패널에 SQL이 직접 새지 않는다. 펜스 이전·이후의
+        프로즈 토큰은 모두 흘려보낸다.
+
+        Returns:
+            (raw_full_text, confidence_estimate)
+        """
+        from src.openai_retry import chat_completion_streaming
+
+        raw = chat_completion_streaming(
             self.client,
+            on_token,
             model=self.llm_model,
             temperature=self.config["llm"]["temperature"],
             max_completion_tokens=self.config["llm"]["max_tokens"],
             messages=[{"role": "user", "content": prompt}],
-            logprobs=True,  # Phase 2: Confidence Scoring
         )
+        # streaming은 logprobs를 안정적으로 받기 어려우므로 confidence는 0.85 고정.
+        # (downstream의 high-conf gating(0.70) 통과 — NLI 트리거가 의미가 있도록)
+        return raw.strip(), 0.85
 
-        raw = response.choices[0].message.content.strip()
+    @staticmethod
+    def _extract_sql(raw: str) -> str:
+        """LLM 응답에서 SQL을 안전하게 추출한다.
 
-        # SQL 코드 블록 추출
+        프롬프트가 CoT(self-check checklist) + ```sql 블록 형태로 응답을 요구하므로
+        다음 우선순위로 추출한다:
+          1) ```sql ... ``` fenced block (가장 안전)
+          2) ``` ... ``` 임의 fenced block
+          3) raw text에서 마지막 SELECT/WITH/INSERT/UPDATE/DELETE 토큰부터 끝까지
+
+        (3)을 사용하는 이유: CoT가 raw text 앞부분을 차지할 때 fence를 깜빡한 경우.
+        """
+        import re
+
         if "```sql" in raw:
-            sql = raw.split("```sql")[1].split("```")[0].strip()
-        elif "```" in raw:
-            sql = raw.split("```")[1].split("```")[0].strip()
-        else:
-            sql = raw
+            return raw.split("```sql", 1)[1].split("```", 1)[0].strip()
+        if "```" in raw:
+            inner = raw.split("```", 2)
+            if len(inner) >= 3:
+                return inner[1].strip()
+            return inner[1].strip() if len(inner) >= 2 else raw.strip()
 
-        # Phase 2: Logprob 기반 신뢰도 계산
-        # 각 토큰의 log probability 평균 → exp → [0, 1] 범위의 기하평균 확률
-        confidence = self._compute_confidence(response)
-
-        return {"sql": sql, "confidence": confidence}
+        # Fallback: SQL 키워드 시작점 탐지 (case-insensitive, 마지막 매치)
+        match = list(re.finditer(
+            r"(?im)^\s*(?:SELECT|WITH|INSERT|UPDATE|DELETE)\b",
+            raw,
+        ))
+        if match:
+            return raw[match[-1].start():].strip()
+        return raw.strip()
 
     def _compute_confidence(self, response) -> float:
         """

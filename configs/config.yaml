@@ -29,12 +29,12 @@ evaluation:
 
 baselines:
   dail_sql:
-    few_shot_k: 9                    # 논문 최적 k=9. 비용상 축소 시 논문에 명시.
+    few_shot_k: 5                    # 원 논문 Few-shot+SC 설정 k=5. 경량 래퍼로 SC 생략.
     skeleton_sim_threshold: 0.85     # SQL skeleton Jaccard 임계값 (논문 기본값)
   mac_sql:
     max_refine_rounds: 3     # MAC-SQL Refiner 최대 교정 횟수 (논문 기본값=3, Appendix A.3)
     sqlite_timeout: 5.0      # SQL 실행 타임아웃 (초)
-    selector_char_threshold: 6000  # Selector 활성화 임계값(글자수). 논문: token수>0.8*max_seq_len
+    selector_char_threshold: 0  # 항상 Selector 활성화 (경량 래퍼, 구조 결함 방지)
 
 output:
   results_dir: "outputs/logs/"

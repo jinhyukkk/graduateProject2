@@ -59,13 +59,166 @@ except ImportError:
 # ────────────────────────────────────────────────────────────
 
 def load_config() -> dict:
-    """Load configs/config.yaml from the project root."""
-    config_path = os.path.join(PROJECT_ROOT, "configs", "config.yaml")
+    """Load configuration for the demo backend.
+
+    우선순위 (정확도 ↑ 순):
+      1. configs/config_demo.yaml — 시연 전용 (gpt-4o, top_k 확대 등)
+      2. configs/config.yaml — 기본 실험 설정 fallback
+    """
+    demo_path = os.path.join(PROJECT_ROOT, "configs", "config_demo.yaml")
+    config_path = (
+        demo_path
+        if os.path.exists(demo_path)
+        else os.path.join(PROJECT_ROOT, "configs", "config.yaml")
+    )
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 CONFIG = load_config()
+
+
+# ────────────────────────────────────────────────────────────
+# Pipeline cache — 매 쿼리마다 SCTSQL을 새로 만들면 SchemaLinker가
+# OpenAI 임베딩 API로 FAISS 인덱스를 재구축해 1-3초 정적 비용이 누적된다.
+# (db_path, llm_model) 별로 인스턴스를 재사용해 시연·실서비스 응답 속도를 단축.
+# ────────────────────────────────────────────────────────────
+
+_PIPELINE_CACHE: dict[tuple, "SCTSQL"] = {}
+# 워밍업 스레드와 첫 사용자 쿼리가 동시에 도착하면 동일 (db, model, dataset)에 대해
+# SCTSQL을 중복 빌드해 워밍업 효과가 사라진다 (FAISS 빌드를 두 번 수행). 단일 락으로
+# 워밍업이 진행 중이면 사용자 쿼리가 자연스럽게 그 결과를 공유하도록 직렬화한다.
+import threading as _threading  # noqa: E402
+_PIPELINE_LOCK = _threading.Lock()
+
+
+def _load_few_shot_for_dataset(dataset: str, config: dict) -> list[dict] | None:
+    """데이터셋별 dev set을 few-shot pool로 사용한다.
+
+    백엔드 시연 경로에서 정확도가 눈에 띄게 떨어지던 원인 중 하나가 few-shot
+    미주입이었다 (run_query/streaming은 SCTSQL(db_path, config)만 호출).
+    HRDB는 dev.json의 모든 정답 예시를, BIRD는 동일 db_id의 예시만 활용한다.
+    """
+    if not EVALUATE_AVAILABLE:
+        return None
+    try:
+        return load_few_shot_examples(dataset, config)
+    except Exception:
+        return None
+
+
+# 도메인 룰 — 시연 점검에서 LLM이 자체적으로 추론하지 못한 비즈니스 정의를
+# evidence로 주입한다. metadata.json이나 dev set에 분산된 도메인 지식을
+# 한 곳에 모아 SQL 생성 프롬프트의 "External Knowledge" 자리로 전달한다.
+_HRDB_DOMAIN_EVIDENCE = """\
+## HRDB 도메인 규칙 (반드시 반영)
+
+[재직 상태]
+- "재직 중"의 표준 정의는 `THRM151.STATUS_CD = 'S10' AND THRM151.EDATE IS NULL` 이다.
+  EDATE는 인사이력 종료일이므로 NULL이어야 현재 행이다. 둘 중 하나만 쓰면 과거 이력 행까지 포함될 수 있다.
+- "퇴사" 또는 "퇴직"은 `STATUS_CD != 'S10'` 또는 `THRM100.RET_YMD IS NOT NULL` 로 판정.
+- "현재 직급/소속" 조회는 항상 `THRM151.EDATE IS NULL` 을 함께 둔다 (이력 테이블이라 동일 SABUN에 여러 행이 존재).
+
+[직급·직책]
+- 직급(JIKGUB)은 사원→주임→대리→과장→차장→부장→이사 순서. 코드 J01~J07.
+- 직책(JIKCHAK)은 부서장 역할(팀장 등). JIKGUB과는 별개의 차원이다.
+- "직급별 ~"은 JIKGUB_CD로 GROUP BY 하고 JIKGUB_NM을 함께 SELECT.
+- "부서별 ~"은 ORG_CD로 GROUP BY 하고 ORG_NM을 함께 SELECT (TORG101 JOIN 필요).
+
+[급여]
+- 월급여 비교는 `TCPN303.TOT_EARNING_MON` (총 월수령액). 직급별 평균 비교 시 이 컬럼.
+- 급여 행은 PAY_ACTION_CD(지급년월)별로 다수 존재 — "최근 급여"는 `MAX(PAY_ACTION_CD)` 행 1개를 기준으로 잡는다.
+
+[조인 안전]
+- THRM100(인사기본) ↔ THRM151(인사이력)은 SABUN으로 조인. 이력 테이블 측 EDATE IS NULL 조건 필수.
+- THRM151 ↔ TORG101(조직)은 ORG_CD로 조인.
+- TCPN303 ↔ THRM151은 SABUN + (가능하면) PAY_ACTION_CD로 매칭.
+
+[시간 표현]
+- "올해": CURRENT_DATE의 연도. "작년": CURRENT_DATE의 연도 - 1.
+- "최근 입사": EMP_YMD가 큰 순서로 정렬해 상위 N건. 별도 명시가 없으면 5건.
+- 날짜 컬럼은 `YYYYMMDD` 8자리 문자열 — `SUBSTR(col, 1, 4)` 로 연도 추출.
+"""
+
+
+def get_or_create_pipeline(
+    db_path: str,
+    config: dict,
+    dataset: str = "hrdb",
+    db_id: str | None = None,
+) -> "SCTSQL":
+    """동일 DB·동일 모델 조합의 SCTSQL 인스턴스를 캐시에서 반환한다.
+
+    캐시 키는 (db_path, llm_model, dataset)로, 시연 환경에서 모델 변경이 잦지
+    않다는 가정에 기반한다. 모델이 바뀌면 새 인스턴스를 만들고 기존 것은 GC가
+    정리한다. SchemaLinker FAISS 인덱스 + 임베딩 호출 비용(1-3s/쿼리)을 제거.
+    """
+    key = (db_path, config["llm"]["model"], dataset)
+    with _PIPELINE_LOCK:
+        cached = _PIPELINE_CACHE.get(key)
+        if cached is not None:
+            return cached
+        few_shots = _load_few_shot_for_dataset(dataset, config)
+        # BIRD는 db_id별로 스키마가 달라 동일 db_id 예시만 의미가 있음
+        if few_shots and dataset == "bird" and db_id:
+            few_shots = [ex for ex in few_shots if ex.get("db_id") == db_id]
+        pipeline = SCTSQL(db_path, config, few_shot_examples=few_shots)
+        _PIPELINE_CACHE[key] = pipeline
+        return pipeline
+
+
+# ────────────────────────────────────────────────────────────
+# Cold-start warmup
+# ────────────────────────────────────────────────────────────
+
+def warmup_default_pipeline() -> None:
+    """기본 DB의 SC-TSQL 파이프라인을 미리 인스턴스화해 콜드 스타트를 제거한다.
+
+    워밍업 항목:
+      1) SchemaLinker FAISS 인덱스 (디스크 캐시 적중 시 즉시 복원)
+      2) SemanticVerifier의 NLI cross-encoder 모델 로드 + 더미 추론
+      3) Few-shot 예시 로드 + reranker 재사용 준비
+
+    부팅 직후 백그라운드 스레드에서 실행돼 서버는 즉시 요청을 받기 시작한다.
+    예외는 로깅만 하고 부팅을 막지 않는다 (OpenAI 키 누락·DB 누락 등 예외 케이스).
+    """
+    import logging
+    log = logging.getLogger("tsql_service.warmup")
+    if not SRC_AVAILABLE:
+        log.warning("src 모듈을 가져올 수 없어 워밍업을 건너뜁니다 (%s)", _import_error)
+        return
+    t_total = time.time()
+    try:
+        config = load_config()
+        # HRDB가 있으면 우선, 없으면 첫 BIRD DB로 워밍업
+        databases = scan_databases()
+        if not databases:
+            log.warning("워밍업할 DB가 없습니다 — data/raw 확인 필요")
+            return
+        target = next((d for d in databases if d["dataset"] == "hrdb"), databases[0])
+        db_path = resolve_db_path(target["dataset"], target["id"])
+        log.info("워밍업 시작: dataset=%s db_id=%s", target["dataset"], target["id"])
+
+        t = time.time()
+        pipeline = get_or_create_pipeline(
+            db_path, config, dataset=target["dataset"], db_id=target["id"],
+        )
+        log.info("파이프라인 인스턴스화 완료 (%.2fs)", time.time() - t)
+
+        # NLI cross-encoder 더미 추론 — sentence-transformers는 첫 .predict() 시
+        # 토크나이저·모델 가중치를 fully load하므로 한 번 호출해 lazy init을 강제.
+        try:
+            t = time.time()
+            pipeline.semantic_verifier.nli_model.predict(
+                [("warmup query", "warmup hypothesis")]
+            )
+            log.info("NLI 모델 워밍업 완료 (%.2fs)", time.time() - t)
+        except Exception as exc:
+            log.warning("NLI 워밍업 실패(%s) — 첫 쿼리에서 자연 로드", exc)
+
+        log.info("총 워밍업 소요 %.2fs — 첫 쿼리 콜드 스타트 제거됨", time.time() - t_total)
+    except Exception as exc:
+        log.warning("워밍업 실패(%s) — 첫 쿼리는 콜드 스타트 비용을 그대로 부담", exc)
 
 
 # ────────────────────────────────────────────────────────────
@@ -259,14 +412,16 @@ def run_query(
         )
 
     config = load_config()
+    domain_evidence = _HRDB_DOMAIN_EVIDENCE if dataset == "hrdb" else ""
     # Phase 3: config.use_langgraph=true 시 LangGraph 오케스트레이터 사용
     if config.get("use_langgraph", False):
         pipeline = LangGraphSCTSQL(db_path, config)
     else:
-        pipeline = SCTSQL(db_path, config)
+        pipeline = get_or_create_pipeline(db_path, config, dataset=dataset, db_id=db_id)
     result: SCTSQLResult = pipeline.run(
         query,
         conversation_history=conversation_history or [],
+        evidence=domain_evidence,
     )
 
     # Build response
@@ -311,30 +466,49 @@ def run_query(
             "row_count": result.final_validation.row_count,
         }
 
-    # Verification info
+    # Verification info — 3축 검증 (NLI + LLM 자기 비평)
     verification = {"back_translation": "", "similarity_score": 0.0,
-                    "is_consistent": True, "mismatch_diagnosis": None}
+                    "is_consistent": True, "mismatch_diagnosis": None,
+                    "llm_critique_score": 1.0, "llm_critique_pass": True,
+                    "llm_critique_reason": ""}
     if result.final_verification is not None:
+        fv = result.final_verification
         verification = {
-            "back_translation": result.final_verification.back_translation,
-            "similarity_score": result.final_verification.similarity_score,
-            "is_consistent": result.final_verification.is_consistent,
-            "mismatch_diagnosis": result.final_verification.mismatch_diagnosis,
+            "back_translation": fv.back_translation,
+            "similarity_score": fv.similarity_score,
+            "is_consistent": fv.is_consistent,
+            "mismatch_diagnosis": fv.mismatch_diagnosis,
+            "llm_critique_score": getattr(fv, "llm_critique_score", 1.0),
+            "llm_critique_pass": getattr(fv, "llm_critique_pass", True),
+            "llm_critique_reason": getattr(fv, "llm_critique_reason", ""),
         }
 
-    # Guardrails info (Phase 3)
+    # Guardrails info (Phase 3 + §6.2 운영 가이드라인 분기)
     guardrails_info = {
         "rows_truncated": False,
         "original_row_count": 0,
         "low_confidence_warning": False,
         "warning_message": "",
+        "action": "auto_execute",
+        "action_severity": "info",
+        "action_title": "",
+        "action_detail": "",
+        "case_id": "",
+        "persona_scenario": "",
     }
     if result.guardrails is not None:
+        gr = result.guardrails
         guardrails_info = {
-            "rows_truncated": result.guardrails.rows_truncated,
-            "original_row_count": result.guardrails.original_row_count,
-            "low_confidence_warning": result.guardrails.low_confidence_warning,
-            "warning_message": result.guardrails.warning_message,
+            "rows_truncated": gr.rows_truncated,
+            "original_row_count": gr.original_row_count,
+            "low_confidence_warning": gr.low_confidence_warning,
+            "warning_message": gr.warning_message,
+            "action": getattr(gr, "action", "auto_execute"),
+            "action_severity": getattr(gr, "action_severity", "info"),
+            "action_title": getattr(gr, "action_title", ""),
+            "action_detail": getattr(gr, "action_detail", ""),
+            "case_id": getattr(gr, "case_id", ""),
+            "persona_scenario": getattr(gr, "persona_scenario", ""),
         }
 
     return {
@@ -391,16 +565,15 @@ async def run_query_stream(
                 )
 
             config = load_config()
-            if config.get("use_langgraph", False):
-                # LangGraph 오케스트레이터는 on_event 미지원 — 일반 파이프라인으로 fallback
-                pipeline = SCTSQL(db_path, config)
-            else:
-                pipeline = SCTSQL(db_path, config)
+            domain_evidence = _HRDB_DOMAIN_EVIDENCE if dataset == "hrdb" else ""
+            # use_langgraph=true여도 streaming on_event는 일반 SCTSQL만 지원
+            pipeline = get_or_create_pipeline(db_path, config, dataset=dataset, db_id=db_id)
 
             result: SCTSQLResult = pipeline.run(
                 query,
                 conversation_history=conversation_history or [],
                 on_event=emit,
+                evidence=domain_evidence,
             )
 
             # 최종 결과 직렬화 (링커가 선택한 테이블만 포함)
@@ -451,25 +624,41 @@ async def run_query_stream(
             verification = {
                 "back_translation": "", "similarity_score": 0.0,
                 "is_consistent": True, "mismatch_diagnosis": None,
+                "llm_critique_score": 1.0, "llm_critique_pass": True,
+                "llm_critique_reason": "",
             }
             if result.final_verification is not None:
+                fv = result.final_verification
                 verification = {
-                    "back_translation": result.final_verification.back_translation,
-                    "similarity_score": result.final_verification.similarity_score,
-                    "is_consistent": result.final_verification.is_consistent,
-                    "mismatch_diagnosis": result.final_verification.mismatch_diagnosis,
+                    "back_translation": fv.back_translation,
+                    "similarity_score": fv.similarity_score,
+                    "is_consistent": fv.is_consistent,
+                    "mismatch_diagnosis": fv.mismatch_diagnosis,
+                    "llm_critique_score": getattr(fv, "llm_critique_score", 1.0),
+                    "llm_critique_pass": getattr(fv, "llm_critique_pass", True),
+                    "llm_critique_reason": getattr(fv, "llm_critique_reason", ""),
                 }
 
             guardrails_info = {
                 "rows_truncated": False, "original_row_count": 0,
                 "low_confidence_warning": False, "warning_message": "",
+                "action": "auto_execute", "action_severity": "info",
+                "action_title": "", "action_detail": "",
+                "case_id": "", "persona_scenario": "",
             }
             if result.guardrails is not None:
+                gr = result.guardrails
                 guardrails_info = {
-                    "rows_truncated": result.guardrails.rows_truncated,
-                    "original_row_count": result.guardrails.original_row_count,
-                    "low_confidence_warning": result.guardrails.low_confidence_warning,
-                    "warning_message": result.guardrails.warning_message,
+                    "rows_truncated": gr.rows_truncated,
+                    "original_row_count": gr.original_row_count,
+                    "low_confidence_warning": gr.low_confidence_warning,
+                    "warning_message": gr.warning_message,
+                    "action": getattr(gr, "action", "auto_execute"),
+                    "action_severity": getattr(gr, "action_severity", "info"),
+                    "action_title": getattr(gr, "action_title", ""),
+                    "action_detail": getattr(gr, "action_detail", ""),
+                    "case_id": getattr(gr, "case_id", ""),
+                    "persona_scenario": getattr(gr, "persona_scenario", ""),
                 }
 
             emit("result", {

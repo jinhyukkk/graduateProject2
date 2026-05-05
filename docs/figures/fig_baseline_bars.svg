@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="420" viewBox="0 0 760 420" font-family="-apple-system, BlinkMacSystemFont, sans-serif">
+<style>
+.bird{fill:#3498db;}.hrdb{fill:#e67e22;}
+.lbl{font-size:11px;fill:#333;}
+.title{font-size:16px;font-weight:700;fill:#111;}
+.axis{font-size:11px;fill:#666;}
+</style>
+<text x="380" y="26" text-anchor="middle" class="title">BIRD dev_300 vs HRDB n=257 — EX 비교 (GPT-4o-2024-11-20)</text>
+<line x1="76" y1="350.0" x2="720" y2="350.0" stroke="#eee"/>
+<text x="72" y="354.0" text-anchor="end" class="axis">0%</text>
+<line x1="76" y1="275.0" x2="720" y2="275.0" stroke="#eee"/>
+<text x="72" y="279.0" text-anchor="end" class="axis">20%</text>
+<line x1="76" y1="200.0" x2="720" y2="200.0" stroke="#eee"/>
+<text x="72" y="204.0" text-anchor="end" class="axis">40%</text>
+<line x1="76" y1="125.0" x2="720" y2="125.0" stroke="#eee"/>
+<text x="72" y="129.0" text-anchor="end" class="axis">60%</text>
+<line x1="76" y1="50.0" x2="720" y2="50.0" stroke="#eee"/>
+<text x="72" y="54.0" text-anchor="end" class="axis">80%</text>
+<line x1="80" y1="58.849999999999966" x2="720" y2="58.849999999999966" stroke="#c0392b" stroke-dasharray="6 3" stroke-width="1.5"/>
+<text x="720" y="53.849999999999966" text-anchor="end" class="lbl" fill="#c0392b">BIRD #1 (AskData + GPT-4o, 77.64%)</text>
+<rect class="bird" x="98.0" y="159.875" width="33.333333333333336" height="190.125"/>
+<text x="114.66666666666667" y="155.875" text-anchor="middle" class="lbl">50.7</text>
+<rect class="hrdb" x="135.33333333333334" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="152.0" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<text x="133.33333333333334" y="368" text-anchor="middle" class="lbl">Zero-shot</text>
+<rect class="bird" x="204.66666666666666" y="185.0" width="33.333333333333336" height="165.0"/>
+<text x="221.33333333333331" y="181.0" text-anchor="middle" class="lbl">44.0</text>
+<rect class="hrdb" x="242.0" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="258.6666666666667" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<text x="240.0" y="368" text-anchor="middle" class="lbl">DAIL-SQL</text>
+<rect class="bird" x="311.33333333333337" y="251.375" width="33.333333333333336" height="98.625"/>
+<text x="328.00000000000006" y="247.375" text-anchor="middle" class="lbl">26.3</text>
+<rect class="hrdb" x="348.6666666666667" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="365.33333333333337" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<text x="346.6666666666667" y="368" text-anchor="middle" class="lbl">MAC-SQL</text>
+<rect class="bird" x="418.00000000000006" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="434.66666666666674" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<rect class="hrdb" x="455.33333333333337" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="472.00000000000006" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<text x="453.33333333333337" y="368" text-anchor="middle" class="lbl">DIN-SQL</text>
+<rect class="bird" x="524.6666666666666" y="161.37500000000003" width="33.333333333333336" height="188.62499999999997"/>
+<text x="541.3333333333333" y="157.37500000000003" text-anchor="middle" class="lbl">50.3</text>
+<rect class="hrdb" x="562.0" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="578.6666666666666" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<text x="560.0" y="368" text-anchor="middle" class="lbl">SC-TSQL (no_sc)</text>
+<rect class="bird" x="631.3333333333334" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="648.0" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<rect class="hrdb" x="668.6666666666667" y="350.0" width="33.333333333333336" height="0.0"/>
+<text x="685.3333333333334" y="346.0" text-anchor="middle" class="lbl">0.0</text>
+<text x="666.6666666666667" y="368" text-anchor="middle" class="lbl">SC-TSQL (Full)</text>
+<rect class="bird" x="80" y="390" width="14" height="10"/>
+<text x="100" y="400" class="lbl">BIRD dev_300</text>
+<rect class="hrdb" x="200" y="390" width="14" height="10"/>
+<text x="220" y="400" class="lbl">HRDB n=257</text>
+</svg>

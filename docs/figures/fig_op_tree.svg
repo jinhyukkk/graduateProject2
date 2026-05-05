@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="540" viewBox="0 0 760 540" font-family="-apple-system, BlinkMacSystemFont, sans-serif">
+<style>
+.box{fill:#fff;stroke:#333;stroke-width:1.5;}
+.lbl{font-size:12px;fill:#333;}
+.title{font-size:16px;font-weight:700;fill:#111;}
+.action{font-weight:600;}
+.action-auto{fill:#27ae60;}.action-warn{fill:#e67e22;}.action-hitl{fill:#c0392b;}.action-skip{fill:#7f8c8d;}
+.edge{stroke:#999;stroke-width:1.2;fill:none;}
+</style>
+<text x="380" y="28" text-anchor="middle" class="title">§6.2 NLI 검증 결과별 운영 가이드라인 (HITL 트리아지)</text>
+<rect class="box" x="280" y="60" width="200" height="50" rx="6"/>
+<text x="380" y="78" text-anchor="middle" class="lbl">SQL 생성 + 실행</text>
+<line class="edge" x1="380" y1="110" x2="380" y2="145"/>
+<rect class="box" x="280" y="145" width="200" height="60" rx="6"/>
+<text x="380" y="163" text-anchor="middle" class="lbl">실행 통과?</text>
+<text x="380" y="179" text-anchor="middle" class="lbl">(exec_validator)</text>
+<line class="edge" x1="380" y1="205" x2="200" y2="240"/>
+<text x="295" y="219" class="lbl">No</text>
+<line class="edge" x1="380" y1="205" x2="560" y2="240"/>
+<text x="475" y="219" class="lbl">Yes</text>
+<rect class="box" x="80" y="240" width="220" height="70" rx="6"/>
+<text x="190" y="258" text-anchor="middle" class="lbl action action-auto">[자동 교정]</text>
+<text x="190" y="274" text-anchor="middle" class="lbl">유형별 라우팅 → 재생성</text>
+<text x="190" y="290" text-anchor="middle" class="lbl">max_rounds=3</text>
+<rect class="box" x="440" y="240" width="220" height="70" rx="6"/>
+<text x="550" y="258" text-anchor="middle" class="lbl">NLI ICS ≥ θ?</text>
+<text x="550" y="274" text-anchor="middle" class="lbl">(θ=0.75)</text>
+<line class="edge" x1="550" y1="310" x2="290" y2="360"/>
+<text x="425" y="332" class="lbl">No (사각지대 후보)</text>
+<line class="edge" x1="550" y1="310" x2="660" y2="360"/>
+<text x="610" y="332" class="lbl">Yes</text>
+<rect class="box" x="150" y="360" width="280" height="90" rx="6"/>
+<text x="290" y="378" text-anchor="middle" class="lbl action action-hitl">[HITL 트리아지]</text>
+<text x="290" y="394" text-anchor="middle" class="lbl">사용자에게 의도 재확인</text>
+<text x="290" y="410" text-anchor="middle" class="lbl">+ 결과 자연어 설명 동시 제시</text>
+<text x="290" y="426" text-anchor="middle" class="lbl">EIED 68.1%: 사각지대의 2/3 차단</text>
+<rect class="box" x="540" y="360" width="200" height="70" rx="6"/>
+<text x="640" y="378" text-anchor="middle" class="lbl action action-auto">[자동 실행]</text>
+<text x="640" y="394" text-anchor="middle" class="lbl">결과를 사용자에 전달</text>
+<text x="640" y="410" text-anchor="middle" class="lbl">+ 확신도 표시</text>
+<rect x="40" y="470" width="680" height="55" fill="#f8f9fa" stroke="#ccc" rx="6"/>
+<text x="380" y="490" text-anchor="middle" class="lbl"><tspan font-weight="700">결합 조건:</tspan> NLI ICS &lt; 0.75 AND SQL_confidence &gt; 0.7 → HITL 우선순위 高</text>
+<text x="380" y="510" text-anchor="middle" class="lbl">SC k=5 결과 다수결 일치도 &lt; 60% → 자동 교정 대신 HITL 라우팅</text>
+</svg>

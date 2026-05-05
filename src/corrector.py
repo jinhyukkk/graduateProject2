@@ -4,10 +4,12 @@ Corrector (Section 4.4.3)
 """
 
 import os
+from typing import Callable
+
 from openai import OpenAI
 from src.execution_validator import ValidationResult
 from src.semantic_verifier import VerificationResult
-from src.openai_retry import chat_completion
+from src.openai_retry import chat_completion, chat_completion_streaming
 
 
 # RQ2: 오류 유형별 전용 교정 지시문.
@@ -111,6 +113,8 @@ class Corrector:
         schema_context: dict | None = None,
         correction_history: list[dict] | None = None,
         evidence: str = "",
+        value_hints: str = "",
+        on_token: Callable[[str], None] | None = None,
     ) -> str:
         """
         Section 4.4.3: 오류 정보를 기반으로 SQL을 교정한다.
@@ -154,9 +158,14 @@ class Corrector:
         if evidence and evidence.strip():
             evidence_block = f"\n## External Knowledge / Hint\n{evidence.strip()}\n"
 
+        # Value Hints 블록 — DB 실제 값 매칭 결과 (WHERE 절 오류 방지)
+        value_block = ""
+        if value_hints and value_hints.strip():
+            value_block = f"\n{value_hints.strip()}\n"
+
         # Section 4.4.3 + RQ2: 오류 유형별 지시문이 포함된 Corrector 프롬프트
         prompt = f"""You are an expert SQL debugger. Fix the following SQL query based on the error information provided.
-{schema_block}{evidence_block}
+{schema_block}{evidence_block}{value_block}
 원래 질의: {query}
 생성된 SQL: {sql}
 실행 결과: {execution_info}
@@ -170,15 +179,26 @@ class Corrector:
 
 Return the corrected SQL query wrapped in ```sql``` code blocks, followed by a brief explanation."""
 
-        response = chat_completion(
-            self.client,
-            model=self.llm_model,
-            temperature=self.config["llm"]["temperature"],
-            max_completion_tokens=self.config["llm"]["max_tokens"],
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        result_text = response.choices[0].message.content.strip()
+        if on_token is None:
+            response = chat_completion(
+                self.client,
+                model=self.llm_model,
+                temperature=self.config["llm"]["temperature"],
+                max_completion_tokens=self.config["llm"]["max_tokens"],
+                messages=[{"role": "user", "content": prompt}],
+            )
+            result_text = response.choices[0].message.content.strip()
+        else:
+            # 시연 폴리시: 교정 라운드의 진단·재생성 추론을 토큰 단위로 흘려보낸다.
+            # SQL fenced block은 chat_completion_streaming이 자동으로 추론 패널에서 가린다.
+            result_text = chat_completion_streaming(
+                self.client,
+                on_token,
+                model=self.llm_model,
+                temperature=self.config["llm"]["temperature"],
+                max_completion_tokens=self.config["llm"]["max_tokens"],
+                messages=[{"role": "user", "content": prompt}],
+            ).strip()
 
         # SQL 추출
         if "```sql" in result_text:
